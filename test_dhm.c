@@ -25,9 +25,9 @@ typedef UINT32 uint32_t;
 #include <stdint.h>
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
 
 /*
  * 32-bit integer manipulation macros (big endian)

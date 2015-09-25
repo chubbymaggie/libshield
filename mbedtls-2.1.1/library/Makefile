@@ -1,7 +1,7 @@
 
 # Also see "include/mbedtls/config.h"
 
-CFLAGS	?= -O2
+CFLAGS	?= -O2 -fno-stack-protector
 WARNING_CFLAGS ?=  -Wall -W -Wdeclaration-after-statement
 LDFLAGS ?=
 
