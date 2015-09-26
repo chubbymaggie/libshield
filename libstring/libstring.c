@@ -62,9 +62,3 @@ size_t strlen(const char *str)
   return (s - str);
 }
 
-void exit(int status)
-{
-  (void) status; //to supress unused parameter warning
-  __asm("int3");
-  while(1);
-}
