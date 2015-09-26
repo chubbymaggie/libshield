@@ -1,10 +1,5 @@
 unsigned int seed = 42;
 
-int rand()
-{
-  return rand_r(&seed);
-}
-
 int rand_r (unsigned int *seed)
 {
   unsigned int next = *seed;
@@ -28,3 +23,9 @@ int rand_r (unsigned int *seed)
 
   return result;
 }
+
+int rand()
+{
+  return rand_r(&seed);
+}
+

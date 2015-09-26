@@ -79,6 +79,8 @@ typedef UINT32 uint32_t;
 #include "mbedtls/memory_buffer_alloc.h"
 #endif
 
+int rand();
+
 /**
  * This function just returns data from rand().
  * Although predictable and often similar on multiple
