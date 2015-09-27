@@ -10,6 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <wmmintrin.h>
+#include <immintrin.h>
 
 void aesrng_seed(int seed);
 double aesrng_get_double();
@@ -32,12 +33,24 @@ void aesrng_seed(int seed) {
   aesrng_seeded = 1;
 }
 
+int _rdseed32_step (uint32_t *seed)
+{
+    unsigned char ok;
+    __asm__ __volatile__ ("rdseed %0; setc %1" : "=r" (*seed), "=qm" (ok));
+ 
+    return (int) ok;
+}
+
+
 static __inline__ __m128i aesrng() {
   static int once = 1;
 
   if (once) {
     if (!aesrng_seeded) {
-      aesrng_seed(1234);
+      /* aesrng_seed(1234); */
+      unsigned int seed;
+      _rdseed32_step(&seed);
+      aesrng_seed(seed);
     }
 
     once = 0;

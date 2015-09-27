@@ -5,6 +5,7 @@
 #define cpuid(f, ax, bx,cx,dx) __asm__ __volatile__ ("cpuid": "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (f));
 
 #define INTEL_FEATURE_AES ((int[3]) {0, 1<<25, 0})
+#define INTEL_FEATURE_RDSEED ((int[3]) {0, 0, 1<<30})
 
 int intel_has_feature(int *features);
 
