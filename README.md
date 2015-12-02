@@ -14,4 +14,5 @@ oyster depends on the mbedTLS library, and does not use the C standard library t
 
 ## Disclaimer
 Work in progress, highly experimental.
+Only tested on Linux for x86-64.
 When your program breaks, you get to keep both pieces. 
