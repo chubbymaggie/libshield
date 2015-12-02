@@ -5,8 +5,8 @@
 
 /* these parameters should be in a SIR config file */
 #define SIR_URL "libsir.so"
-#define SIR_STACKSIZE 4096
-#define SIR_HEAPSIZE 4096
+#define SIR_STACKSIZE 1048576
+#define SIR_HEAPSIZE 1048576
 #define SIR_RECVBUFSIZE 4096
 #define SIR_SENDBUFSIZE 4096
 
@@ -30,6 +30,11 @@ int main(int argc, char **argv)
     /* allocate shared memory between app and SIR */
     uint8_t *ptr3 = (uint8_t *) malloc(sizeof(uint8_t) * SIR_RECVBUFSIZE);
     uint8_t *ptr4 = (uint8_t *) malloc(sizeof(uint8_t) * SIR_SENDBUFSIZE);
+
+    if (!ptr1 || !ptr2 || !ptr3 || !ptr4) {
+        printf("Unable to allocate enough memory for SIR\n");
+        exit(1);
+    }
 
     //sir_main(stack_region, heap_region, input_region, output_region)
     sir_main(ptr1, ptr2, ptr3, ptr4);
