@@ -33,6 +33,7 @@ void aesrng_seed(int seed) {
   aesrng_seeded = 1;
 }
 
+/*
 int _rdseed32_step (uint32_t *seed)
 {
     unsigned char ok;
@@ -40,17 +41,19 @@ int _rdseed32_step (uint32_t *seed)
  
     return (int) ok;
 }
-
+*/
 
 static __inline__ __m128i aesrng() {
   static int once = 1;
 
   if (once) {
     if (!aesrng_seeded) {
-      /* aesrng_seed(1234); */
+      aesrng_seed(1234);
+      /*
       unsigned int seed;
       _rdseed32_step(&seed);
       aesrng_seed(seed);
+      */
     }
 
     once = 0;
