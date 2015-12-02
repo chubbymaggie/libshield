@@ -9,8 +9,8 @@ oyster Currently supports
 oyster depends on the mbedTLS library, and does not use the C standard library to avoid depending on OS services.
 
 ## Installation
- * [Compilation](run make in the parent directory)
- * [Running](run bin/app_host)
+ * Compilation: run make in the parent directory
+ * Running: run bin/app_host
 
 ## Disclaimer
 Work in progress, highly experimental.
