@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* these parameters should be in a SIR config file */
 #define SIR_URL "./libsir.so"
