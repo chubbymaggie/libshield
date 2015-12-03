@@ -1,12 +1,16 @@
 # oyster
 oyster is a runtime library for programming secure isolated regions (SIRs).
-oyster provides core primitives such as memory management (available via malloc and free APIs) and secure communication channel (available via send and recv APIs).
-oyster Currently supports
-  * Secure channel estanlishment using Diffie-Hellman-Merkle protocol for symmetric key exchange
-  * Send and Recieve operations for arbitrary sized data on the secure channelS
-  * Malloc and Free operations for arbitrary sized regions
+SIRs can be thought of as containers containing both code and data, which can not be accessed by any non-SIR code 
+It provides strong security guaranteees (such as confidentiality) in the presence of an untrusted software stack.
+The threat model considers all non-SIR code (the host application, operating system, hypervisor, SMM code, etc.) to be compromised or malicious. 
+oyster provides the SIR developer with the following core primitives:
+  * Communication: send and recv operations for arbitrary sized data on a secure channel. The secure channel is established with trusted remote parties using the Diffie-Hellman-Merkle protocol for symmetric key exchange.
+  * Memory management: malloc and free operations for arbitrary sized regions
 
-oyster depends on the mbedTLS library, and does not use the C standard library to avoid depending on OS services.
+oyster incurs the following dependencies:
+  * [libmbedtls-2.1.1](https://tls.mbed.org) for cryptographic primitives.
+  * [libdrng-1.0](https://software.intel.com/en-us/articles/the-drng-library-and-manual): Intel's Digital Random Number Generator 
+Since the operating system is untrusted, 
 
 ## Installation
  * Compilation: run make in the parent directory
