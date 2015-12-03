@@ -1,6 +1,7 @@
 shared:
 	@mkdir -p bin
 	@make -C src/sir/crypto all
+	@cd src/sir/drng; ./configure; make
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/sir_main.c -o bin/sir_main.o
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/math/div.c -o bin/div.o
 	@cc -O3 -c -std=c89 -Wall -W -fPIC -fno-stack-protector -nostdlib -maes -mrdrnd src/sir/rand/rand.c -o bin/rand.o
