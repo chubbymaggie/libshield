@@ -20,20 +20,6 @@ void exit(int status)
   while(1) { }
 }
 
-uint64_t __attribute__((always_inline)) get_rsp() 
-{
-  uint64_t result;
-  __asm("movq %%rsp, %0":"=r"(result)::);
-  //or we can do: register long rsp asm ("rsp");
-  return result;
-}
-
-void __attribute__((always_inline)) set_rsp(uint64_t new_rsp)
-{
-  uint64_t result;
-  __asm("movq %0, %%rsp"::"r"(new_rsp):);
-}
-
 int sir_main(uint8_t *stack, uint8_t *heap, uint8_t *recv_buf, uint8_t *send_buf) 
 {
   uint64_t old_rsp, new_rsp;
