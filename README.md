@@ -10,7 +10,9 @@ oyster provides the SIR developer with the following core primitives:
 oyster incurs the following dependencies:
   * [libmbedtls-2.1.1](https://tls.mbed.org) for cryptographic primitives.
   * [libdrng-1.0](https://software.intel.com/en-us/articles/the-drng-library-and-manual): Intel's Digital Random Number Generator 
-Since the operating system is untrusted, 
+
+Since the operating system is untrusted, oyster does not use the C standard library because the C runtime directly depends on operating system services. 
+This also reduces the size of our trusted computing base.
 
 ## Installation
  * Compilation: run make in the parent directory
