@@ -20,5 +20,5 @@ This also reduces the size of our trusted computing base.
 
 ## Disclaimer
 Work in progress, highly experimental.
-Only tested on Linux for x86-64.
+Only tested on Linux x86-64.
 When your program breaks, you get to keep both pieces. 
