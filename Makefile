@@ -7,7 +7,7 @@ shared:
 	@cc -O3 -c -std=c89 -Wall -W -fPIC -fno-stack-protector -nostdlib -maes -mrdrnd src/sir/rand/rand.c -o bin/rand.o
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/string/libstring.c -o bin/libmem.o
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/test_dhm.c -Isrc/sir/crypto/include -o bin/test_dhm.o
-	@cc -O2 -shared -fPIC -Wl,-soname,libsir.so -o bin/libsir.so bin/libmem.o bin/test_dhm.o bin/sir_main.o bin/rand.o bin/div.o -nostdlib -Lsrc/sir/crypto/library/ -lmbedcrypto
+	@cc -O2 -shared -fPIC -Wl,-soname,libsir.so -o bin/libsir.so bin/libmem.o bin/test_dhm.o bin/sir_main.o bin/rand.o bin/div.o -nostdlib -Lsrc/sir/crypto/library/ -lmbedcrypto -Lsrc/sir/drng -ldrng
 	@cc src/host_app/host_app.c -ldl -o bin/host_app
 	@echo "Build completed successfully and produced app and libsir.so"
 

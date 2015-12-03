@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdint.h>
 #include "crypto_params.h"
+#include "drng/drng.h"
 
 //static unsigned char buf[16777216];
 //unsigned char buf[1048576] __attribute__ ((section (".crypto_heap")));
@@ -43,6 +44,15 @@ int L_main(uint8_t *stack, uint8_t *heap, uint8_t *recv_buf, uint8_t *send_buf)
   mbedtls_memory_buffer_alloc_free( );
   char *hello = "Hello World!";
   memcpy(send_buf, hello, strlen(hello)); 
-
+  unsigned char iv[16];
+  memset(iv, 0, 16);
+  int r = rdrand_get_bytes(16, iv);
+  if (r == DRNG_SUCCESS) {
+    memset(send_buf + strlen(hello) + 1, 1, sizeof(char));
+    memcpy(send_buf + strlen(hello) + 1 + sizeof(char), iv, 16);
+  }
+  else {
+    memcpy(send_buf + strlen(hello) + 1, 0, sizeof(int));
+  }
   return result;
 }

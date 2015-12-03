@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 /* these parameters should be in a SIR config file */
-#define SIR_URL "libsir.so"
+#define SIR_URL "./libsir.so"
 #define SIR_STACKSIZE 1048576
 #define SIR_HEAPSIZE 1048576
 #define SIR_RECVBUFSIZE 4096
@@ -41,4 +41,16 @@ int main(int argc, char **argv)
 
     /* post-SIR computation, which should start with DestroyIsolatedRegion */
     printf("sir says: %s\n", ptr4);
+    uint8_t is_rand_success = *(ptr4 + strlen(ptr4) + 1);
+    if (is_rand_success) {
+      uint8_t iv[16];
+      memcpy(iv, ptr4 + strlen(ptr4) + 1 + sizeof(uint8_t), 16);
+      int i;
+      printf("sir says: ");
+	  for (i = 0; i < 16; ++i)
+      {
+		 printf("%02x", iv[i]);
+	  }
+      printf("\n");
+    }
 }
