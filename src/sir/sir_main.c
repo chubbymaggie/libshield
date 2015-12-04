@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdint.h>
-#include "crypto_params.h"
 #include "rand/drng.h"
 
 static uint8_t * send_buf;
@@ -27,9 +26,7 @@ int L_main()
   char *hello = "Hello World!";
   uint8_t iv[16];
   int r;
-  char *input_P = DHM_P;
-  char *input_G = DHM_G;
-  result = test_suite_dhm_do_dhm(16, input_P, 16, input_G);
+  result = dhm_test();
   if (result == FAILURE) { exit(1); }
   mbedtls_memory_buffer_alloc_free( );
   memcpy(send_buf, hello, strlen(hello)); 
