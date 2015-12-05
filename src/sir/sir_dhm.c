@@ -1,4 +1,5 @@
 #include "rand/drng.h"
+#include "sir_dhm.h"
 
 #if !defined(MBEDTLS_CONFIG_FILE)
 #include <mbedtls/config.h>
@@ -179,8 +180,7 @@ static int rnd_pseudo_rand( void *rng_state, unsigned char *output, size_t len )
 static int rnd_true_rand( void *rng_state, unsigned char *output, size_t len )
 {
   int r = rdrand_get_bytes(len, output);
-  if (r != DRNG_SUCCESS) { exit(1); } 
-  return 0;
+  return (r != DRNG_SUCCESS) ? 1 : 0; 
 }
 
 #if defined(MBEDTLS_DHM_C)
@@ -190,30 +190,45 @@ static int rnd_true_rand( void *rng_state, unsigned char *output, size_t len )
     do {                                            \
         if( ! (TEST) )                              \
         {                                           \
-            return_value = FAILURE;                 \
             goto exit;                              \
         }                                           \
     } while( 0 )
 
-typedef enum {SUCCESS = 0, FAILURE = 1} result_t;
 
 static const int DHM_radix_P = 16;
-static const char *DHM_P = "b3126aeaf47153c7d67f403030b292b5bd5a6c9eae1c137af34087fce2a36a578d70c5c560ad2bdb924c4a4dbee20a1671be7103ce87defa76908936803dbeca60c33e1289c1a03ac2c6c4e49405e5902fa0596a1cbaa895cc402d5213ed4a5f1f5ba8b5e1ed3da951a4c475afeb0ca660b7368c38c8e809f382d96ae19e60dc984e61cb42b5dfd723322acf327f9e413cda6400c15c5b2ea1fa34405d83982fba40e6d852da3d91019bf23511314254dc211a90833e5b1798ee52a78198c555644729ad92f060367c74ded37704adfc273a4a33fec821bd2ebd3bc051730e97a4dd14d2b766062592f5eec09d16bb50efebf2cc00dd3e0e3418e60ec84870f7";
+static const char *DHM_P = "b3126aeaf47153c7d67f403030b292b5bd5a6c9eae1c137af34087fce2a36a57"
+                           "8d70c5c560ad2bdb924c4a4dbee20a1671be7103ce87defa76908936803dbeca"
+                           "60c33e1289c1a03ac2c6c4e49405e5902fa0596a1cbaa895cc402d5213ed4a5f"
+                           "1f5ba8b5e1ed3da951a4c475afeb0ca660b7368c38c8e809f382d96ae19e60dc"
+                           "984e61cb42b5dfd723322acf327f9e413cda6400c15c5b2ea1fa34405d83982f"
+                           "ba40e6d852da3d91019bf23511314254dc211a90833e5b1798ee52a78198c555"
+                           "644729ad92f060367c74ded37704adfc273a4a33fec821bd2ebd3bc051730e97"
+                           "a4dd14d2b766062592f5eec09d16bb50efebf2cc00dd3e0e3418e60ec84870f7";
 static const int DHM_radix_G = 16;
-static const char *DHM_G = "800abfe7dc667aa17bcd7c04614bc221a65482ccc04b604602b0e131908a938ea11b48dc515dab7abcbb1e0c7fd66511edc0d86551b7632496e03df94357e1c4ea07a7ce1e381a2fcafdff5f5bf00df828806020e875c00926e4d011f88477a1b01927d73813cad4847c6396b9244621be2b00b63c659253318413443cd244215cd7fd4cbe796e82c6cf70f89cc0c528fb8e344809b31876e7ef739d5160d095c9684188b0c8755c7a468d47f56d6db9ea012924ecb0556fb71312a8d7c93bb2898ea08ee54eeb594548285f06a973cbbe2a0cb02e90f323fe045521f34c68354a6d3e95dbfff1eb64692edc0a44f3d3e408d0e479a541e779a6054259e2d854";
+static const char *DHM_G = "800abfe7dc667aa17bcd7c04614bc221a65482ccc04b604602b0e131908a938e"
+                           "a11b48dc515dab7abcbb1e0c7fd66511edc0d86551b7632496e03df94357e1c4"
+                           "ea07a7ce1e381a2fcafdff5f5bf00df828806020e875c00926e4d011f88477a1"
+                           "b01927d73813cad4847c6396b9244621be2b00b63c659253318413443cd24421"
+                           "5cd7fd4cbe796e82c6cf70f89cc0c528fb8e344809b31876e7ef739d5160d095"
+                           "c9684188b0c8755c7a468d47f56d6db9ea012924ecb0556fb71312a8d7c93bb2"
+                           "898ea08ee54eeb594548285f06a973cbbe2a0cb02e90f323fe045521f34c6835"
+                           "4a6d3e95dbfff1eb64692edc0a44f3d3e408d0e479a541e779a6054259e2d854";
 
 static mbedtls_dhm_context dhm_ctx;
 static unsigned char dhm_pub[1000];
 static unsigned char dhm_sec[1000];
+static size_t dhm_sec_len;
 
-result_t dhm_make_public_params()
+dhm_make_public_params_ret_t dhm_make_public_params()
 {
-    result_t return_value;
+    dhm_make_public_params_ret_t return_value;
     rnd_pseudo_info rnd_info;
 
     memset( dhm_pub, 0x00, 1000 );
-    memset( dhm_sec, 0x00, 1000 );
     memset( &rnd_info, 0x00, sizeof( rnd_pseudo_info ) );
+    return_value.outcome = FAILURE;
+    return_value.dhm_pub = dhm_pub;
+    return_value.dhm_pub_size = 1000;
 
     mbedtls_dhm_init( &dhm_ctx );
     TEST_ASSERT( mbedtls_mpi_read_string( &dhm_ctx.P, DHM_radix_P, DHM_P ) == 0 );
@@ -221,7 +236,28 @@ result_t dhm_make_public_params()
     dhm_ctx.len = mbedtls_mpi_size( &dhm_ctx.P );
 
     TEST_ASSERT( mbedtls_dhm_make_public( &dhm_ctx, dhm_ctx.len, dhm_pub, dhm_ctx.len, &rnd_true_rand, &rnd_info ) == 0 );
-    return_value = SUCCESS;
+    return_value.outcome = SUCCESS;
+exit:
+    mbedtls_dhm_free( &dhm_ctx );
+    return return_value;
+}
+
+dhm_compute_secret_ret_t dhm_compute_secret(uint8_t *remote_public)
+{
+    dhm_compute_secret_ret_t return_value;
+    rnd_pseudo_info rnd_info;
+
+    memset( dhm_sec, 0x00, 1000 );
+    memset( &rnd_info, 0x00, sizeof( rnd_pseudo_info ) );
+    return_value.outcome = FAILURE;
+
+    TEST_ASSERT( mbedtls_dhm_read_public( &dhm_ctx, remote_public, dhm_ctx.len ) == 0 );
+    TEST_ASSERT( mbedtls_dhm_calc_secret( &dhm_ctx, dhm_sec, sizeof( dhm_sec ), &dhm_sec_len, &rnd_true_rand, &rnd_info ) == 0 );
+    TEST_ASSERT( dhm_sec_len != 0 );
+
+    return_value.dhm_sec = dhm_sec;
+    return_value.dhm_sec_size = dhm_sec_len;
+    return_value.outcome = SUCCESS;
 exit:
     mbedtls_dhm_free( &dhm_ctx );
     return return_value;
@@ -252,6 +288,7 @@ result_t dhm_test()
     memset( &rnd_info_srv, 0x00, sizeof( rnd_pseudo_info ) );
     memset( &rnd_info_cli, 0x00, sizeof( rnd_pseudo_info ) );
 
+    return_value = FAILURE;
     /*
      * Set params
      */

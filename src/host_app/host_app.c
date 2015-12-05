@@ -11,7 +11,8 @@
 #define SIR_RECVBUFSIZE 4096
 #define SIR_SENDBUFSIZE 4096
 
-typedef void (*sir_main_t)(uint8_t *, uint8_t *, uint8_t *, uint8_t *);
+typedef void (*sir_init_t)(uint8_t *, uint8_t *, uint8_t *, uint8_t *);
+typedef void (*sir_main_t)();
 
 int main(int argc, char **argv)
 {
@@ -21,6 +22,7 @@ int main(int argc, char **argv)
         printf("Unable to load SIR binary: %s\n", SIR_URL);
         exit(1);
     }
+    sir_init_t sir_init = (sir_init_t) dlsym(handle, "sir_init");
     sir_main_t sir_main = (sir_main_t) dlsym(handle, "sir_main");
     
     /* allocate memory for SIR heap and SIR stack */
@@ -37,13 +39,15 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    //sir_main(stack_region, heap_region, input_region, output_region)
-    sir_main(ptr1, ptr2, ptr3, ptr4);
+    //sir_init(stack_region, heap_region, input_region, output_region)
+    sir_init(ptr1, ptr2, ptr3, ptr4);
+
+    sir_main();
 
     /* post-SIR computation, which should start with DestroyIsolatedRegion */
     printf("sir says: %s\n", ptr4);
-    uint8_t is_rand_success = *(ptr4 + strlen(ptr4) + 1);
-    if (is_rand_success) {
+    uint8_t is_rand_success = *((uint8_t *) ptr4 + strlen(ptr4) + 1);
+    if (is_rand_success == 1) {
       uint8_t iv[16];
       memcpy(iv, ptr4 + strlen(ptr4) + 1 + sizeof(uint8_t), 16);
       int i;
