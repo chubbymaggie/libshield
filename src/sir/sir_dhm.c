@@ -226,7 +226,7 @@ dhm_make_public_params_ret_t dhm_make_public_params()
 
     memset( dhm_pub, 0x00, 1000 );
     memset( &rnd_info, 0x00, sizeof( rnd_pseudo_info ) );
-    return_value.outcome = FAILURE;
+    return_value.outcome = DHM_FAILURE;
     return_value.dhm_pub = dhm_pub;
     return_value.dhm_pub_size = 1000;
 
@@ -236,7 +236,7 @@ dhm_make_public_params_ret_t dhm_make_public_params()
     dhm_ctx.len = mbedtls_mpi_size( &dhm_ctx.P );
 
     TEST_ASSERT( mbedtls_dhm_make_public( &dhm_ctx, dhm_ctx.len, dhm_pub, dhm_ctx.len, &rnd_true_rand, &rnd_info ) == 0 );
-    return_value.outcome = SUCCESS;
+    return_value.outcome = DHM_SUCCESS;
 exit:
     mbedtls_dhm_free( &dhm_ctx );
     return return_value;
@@ -249,7 +249,7 @@ dhm_compute_secret_ret_t dhm_compute_secret(uint8_t *remote_public)
 
     memset( dhm_sec, 0x00, 1000 );
     memset( &rnd_info, 0x00, sizeof( rnd_pseudo_info ) );
-    return_value.outcome = FAILURE;
+    return_value.outcome = DHM_FAILURE;
 
     TEST_ASSERT( mbedtls_dhm_read_public( &dhm_ctx, remote_public, dhm_ctx.len ) == 0 );
     TEST_ASSERT( mbedtls_dhm_calc_secret( &dhm_ctx, dhm_sec, sizeof( dhm_sec ), &dhm_sec_len, &rnd_true_rand, &rnd_info ) == 0 );
@@ -257,15 +257,15 @@ dhm_compute_secret_ret_t dhm_compute_secret(uint8_t *remote_public)
 
     return_value.dhm_sec = dhm_sec;
     return_value.dhm_sec_size = dhm_sec_len;
-    return_value.outcome = SUCCESS;
+    return_value.outcome = DHM_SUCCESS;
 exit:
     mbedtls_dhm_free( &dhm_ctx );
     return return_value;
 }
 
-result_t dhm_test()
+dhm_api_result_t dhm_test()
 {
-    result_t return_value;
+    dhm_api_result_t return_value;
     mbedtls_dhm_context ctx_srv;
     mbedtls_dhm_context ctx_cli;
     unsigned char pub_srv[1000];
@@ -288,7 +288,7 @@ result_t dhm_test()
     memset( &rnd_info_srv, 0x00, sizeof( rnd_pseudo_info ) );
     memset( &rnd_info_cli, 0x00, sizeof( rnd_pseudo_info ) );
 
-    return_value = FAILURE;
+    return_value = DHM_FAILURE;
     /*
      * Set params
      */
@@ -318,7 +318,7 @@ result_t dhm_test()
     TEST_ASSERT( sec_srv_len == sec_cli_len );
     TEST_ASSERT( sec_srv_len != 0 );
     TEST_ASSERT( memcmp( sec_srv, sec_cli, sec_srv_len ) == 0 );
-    return_value = SUCCESS;
+    return_value = DHM_SUCCESS;
 
 exit:
     mbedtls_dhm_free( &ctx_srv );

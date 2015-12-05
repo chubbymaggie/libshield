@@ -2,9 +2,8 @@
 #include <stdint.h>
 #include "rand/drng.h"
 #include "sir_dhm.h"
+#include "sir_channel.h"
 
-static uint8_t * send_buf;
-static uint8_t * recv_buf;
 static uint8_t * stack_buf;
 static uint8_t * heap_buf;
 
@@ -26,22 +25,29 @@ void L_main()
   int r;
   uint8_t remote_public[1000];
   dhm_compute_secret_ret_t return_value;
+  channel_api_result_t send_result;
+  uint8_t constant_one = 1;
 
   /* recv remote's DHM public key */
   //memcpy(remote_public, recv_buf, 1000);
   //return_value = dhm_compute_secret(remote_public);
-  //if (return_value.outcome == FAILURE) { exit(1); }
+  //if (return_value.outcome == DHM_FAILURE) { exit(1); }
 
   /* output some junk */
   memset(iv, 0, 16);
   r = rdrand_get_bytes(16, iv);
   if (r != DRNG_SUCCESS) { exit(1); }
 
-  memcpy(send_buf, hello, strlen(hello) + 1); 
-  memset(send_buf + strlen(hello) + 1, 1, sizeof(uint8_t));
-  memcpy(send_buf + strlen(hello) + 1 + sizeof(uint8_t), iv, 16);
-  memcpy(send_buf + strlen(hello) + 1 + sizeof(uint8_t) + 16, &return_value.dhm_sec_size, sizeof(uint64_t));  
-  memcpy(send_buf + strlen(hello) + 1 + sizeof(uint8_t) + 16 + sizeof(uint64_t), return_value.dhm_sec, return_value.dhm_sec_size);  
+  send_result = channel_send((uint8_t *) hello, strlen(hello) + 1);
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send(&constant_one, sizeof(uint8_t));
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send(iv, 16);
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send((uint8_t *) &return_value.dhm_sec_size, sizeof(uint64_t));  
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send(return_value.dhm_sec, return_value.dhm_sec_size);  
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
 }
 
 void sir_main() 
@@ -62,8 +68,9 @@ void sir_main()
 void L_init() 
 {
   dhm_make_public_params_ret_t return_value = dhm_make_public_params();
-  if (return_value.outcome == FAILURE) { exit(1); }
-  memcpy(send_buf, return_value.dhm_pub, 1000);
+  if (return_value.outcome == DHM_FAILURE) { exit(1); }
+  channel_send(return_value.dhm_pub, 1000);
+  channel_send_reset();
 }
 
 void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send) 
@@ -73,8 +80,8 @@ void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send)
   __asm("movq %%rsp, %0":"=r"(old_rsp)::);
   __asm("movq %0, %%rsp"::"r"(new_rsp):);
 
-  send_buf = send;
-  recv_buf = recv;
+  channel_send_init(send, 4096);
+  channel_recv_init(recv, 4096);
   stack_buf = (uint8_t *) new_rsp;
   heap_buf = (uint8_t *) heap;
   mbedtls_memory_buffer_alloc_init( heap, 1048576 );
@@ -82,3 +89,4 @@ void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send)
 
   __asm("movq %0, %%rsp"::"r"(old_rsp):);
 }
+
