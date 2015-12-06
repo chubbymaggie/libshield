@@ -25,13 +25,14 @@ void L_main()
   int r;
   uint8_t remote_public[1000];
   dhm_compute_secret_ret_t return_value;
-  channel_api_result_t send_result;
+  channel_api_result_t send_result, recv_result;
   uint8_t constant_one = 1;
 
   /* recv remote's DHM public key */
-  //memcpy(remote_public, recv_buf, 1000);
-  //return_value = dhm_compute_secret(remote_public);
-  //if (return_value.outcome == DHM_FAILURE) { exit(1); }
+  recv_result = channel_recv(remote_public, 1000);
+  if (recv_result == CHANNEL_FAILURE) { exit(1); }
+  return_value = dhm_compute_secret(remote_public);
+  if (return_value.outcome == DHM_FAILURE) { exit(1); }
 
   /* output some junk */
   memset(iv, 0, 16);
@@ -67,9 +68,11 @@ void sir_main()
 
 void L_init() 
 {
+  channel_api_result_t send_result;
   dhm_make_public_params_ret_t return_value = dhm_make_public_params();
   if (return_value.outcome == DHM_FAILURE) { exit(1); }
-  channel_send(return_value.dhm_pub, 1000);
+  send_result = channel_send(return_value.dhm_pub, 1000);
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
   channel_send_reset();
 }
 

@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <string.h>
 #include "sir_channel.h"
 
 static uint8_t *send_buf_start;

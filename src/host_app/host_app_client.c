@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <czmq.h>
 
 /* these parameters should be in a SIR config file */
 #define SIR_URL "./libsir.so"
@@ -16,6 +18,14 @@ typedef void (*sir_main_t)();
 
 int main(int argc, char **argv)
 {
+    int i;
+    zctx_t *ctx = zctx_new();
+    assert (ctx);
+    void *socket = zsocket_new(ctx, ZMQ_PAIR);
+    int success = zsocket_connect (socket, "tcp://127.0.0.1:5555");
+    //assert (success = 0);
+    printf("Connecting to server on tcp://127.0.0.1:5555...\n");
+
     //grab handle to sir main function
     void *handle = dlopen(SIR_URL, RTLD_LAZY);
     if (handle == NULL) {
@@ -39,9 +49,31 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    printf("Creating SIR...\n");
     //sir_init(stack_region, heap_region, input_region, output_region)
     sir_init(ptr1, ptr2, ptr3, ptr4);
+    //send_buffer has 1000 bytes of DHM public parameters
+    printf("Sending SIR's DMH public key to remote...\n");
+    zmq_send(socket, ptr4, 1000, 0);
+    printf("sending to remote: ");
+	for (i = 0; i < 1000; ++i)
+    {
+	  printf("%02x", ptr4[i]);
+	}
+    printf("\n");
 
+    uint8_t remote_public[1000];
+    printf("Recieving remote's DMH public key...\n");
+    zmq_recv(socket, remote_public, sizeof(remote_public), 0); 
+    memcpy(ptr3, remote_public, sizeof(remote_public));
+    printf("remote says: ");
+	for (i = 0; i < 1000; ++i)
+    {
+	  printf("%02x", ptr3[i]);
+	}
+    printf("\n");
+
+    printf("Computing Diffie-Hellman-Merkle secret...\n");
     sir_main();
 
     /* post-SIR computation, which should start with DestroyIsolatedRegion */
@@ -49,13 +81,22 @@ int main(int argc, char **argv)
     uint8_t is_rand_success = *((uint8_t *) ptr4 + strlen(ptr4) + 1);
     if (is_rand_success == 1) {
       uint8_t iv[16];
-      memcpy(iv, ptr4 + strlen(ptr4) + 1 + sizeof(uint8_t), 16);
+      memcpy(iv, ptr4 + strlen(ptr4) + 2, 16);
       int i;
-      printf("sir says: ");
+      printf("sir gives us random bytes: ");
 	  for (i = 0; i < 16; ++i)
       {
 		 printf("%02x", iv[i]);
 	  }
       printf("\n");
     }
+    printf("sir computes a secret: ");
+    uint64_t secret_size;
+    memcpy(&secret_size, (uint8_t *) ptr4 + strlen(ptr4) + 18, sizeof(uint64_t));
+	for (i = 0; i < secret_size; ++i)
+    {
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t)));
+	}
+    printf("\n");
 }
+

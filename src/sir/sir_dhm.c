@@ -218,11 +218,11 @@ static mbedtls_dhm_context dhm_ctx;
 static unsigned char dhm_pub[1000];
 static unsigned char dhm_sec[1000];
 static size_t dhm_sec_len;
+static rnd_pseudo_info rnd_info;
 
 dhm_make_public_params_ret_t dhm_make_public_params()
 {
     dhm_make_public_params_ret_t return_value;
-    rnd_pseudo_info rnd_info;
 
     memset( dhm_pub, 0x00, 1000 );
     memset( &rnd_info, 0x00, sizeof( rnd_pseudo_info ) );
@@ -238,17 +238,14 @@ dhm_make_public_params_ret_t dhm_make_public_params()
     TEST_ASSERT( mbedtls_dhm_make_public( &dhm_ctx, dhm_ctx.len, dhm_pub, dhm_ctx.len, &rnd_true_rand, &rnd_info ) == 0 );
     return_value.outcome = DHM_SUCCESS;
 exit:
-    mbedtls_dhm_free( &dhm_ctx );
     return return_value;
 }
 
 dhm_compute_secret_ret_t dhm_compute_secret(uint8_t *remote_public)
 {
     dhm_compute_secret_ret_t return_value;
-    rnd_pseudo_info rnd_info;
 
     memset( dhm_sec, 0x00, 1000 );
-    memset( &rnd_info, 0x00, sizeof( rnd_pseudo_info ) );
     return_value.outcome = DHM_FAILURE;
 
     TEST_ASSERT( mbedtls_dhm_read_public( &dhm_ctx, remote_public, dhm_ctx.len ) == 0 );
