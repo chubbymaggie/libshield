@@ -95,7 +95,7 @@ int main(int argc, char **argv)
     memcpy(&secret_size, (uint8_t *) ptr4 + strlen(ptr4) + 18, sizeof(uint64_t));
 	for (i = 0; i < secret_size; ++i)
     {
-	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t)));
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + i));
 	}
     printf("\n");
 }
