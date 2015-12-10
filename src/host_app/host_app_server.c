@@ -58,21 +58,8 @@ int main(int argc, char **argv)
     sir_init(ptr1, ptr2, ptr3, ptr4);
 
     printf("Sending SIR's DMH public key to remote...\n");
-    printf("sending to remote: ");
-	for (i = 0; i < 1000; ++i)
-    {
-	  printf("%02x", ptr4[i]);
-	}
-    printf("\n");
     zmq_send(socket, ptr4, 1000, 0);
     memcpy(ptr3, remote_public, sizeof(remote_public));
-    printf("remote says: ");
-	for (i = 0; i < 1000; ++i)
-    {
-	  printf("%02x", ptr3[i]);
-	}
-    printf("\n");
-
     printf("Computing Diffie-Hellman-Merkle secret...\n");
     sir_main();
 
@@ -90,9 +77,9 @@ int main(int argc, char **argv)
 	  }
       printf("\n");
     }
-    printf("sir computes a secret: ");
     uint64_t secret_size;
     memcpy(&secret_size, (uint8_t *) ptr4 + strlen(ptr4) + 18, sizeof(uint64_t));
+    printf("sir computes a secret of size %lu bytes: ", secret_size);
 	for (i = 0; i < secret_size; ++i)
     {
 	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + i));

@@ -28,32 +28,6 @@ typedef UINT32 uint32_t;
 #include <stdint.h>
 #endif
 
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
-
-/*
- * 32-bit integer manipulation macros (big endian)
- */
-#ifndef GET_UINT32_BE
-#define GET_UINT32_BE(n,b,i)                            \
-{                                                       \
-    (n) = ( (uint32_t) (b)[(i)    ] << 24 )             \
-        | ( (uint32_t) (b)[(i) + 1] << 16 )             \
-        | ( (uint32_t) (b)[(i) + 2] <<  8 )             \
-        | ( (uint32_t) (b)[(i) + 3]       );            \
-}
-#endif
-
-#ifndef PUT_UINT32_BE
-#define PUT_UINT32_BE(n,b,i)                            \
-{                                                       \
-    (b)[(i)    ] = (unsigned char) ( (n) >> 24 );       \
-    (b)[(i) + 1] = (unsigned char) ( (n) >> 16 );       \
-    (b)[(i) + 2] = (unsigned char) ( (n) >>  8 );       \
-    (b)[(i) + 3] = (unsigned char) ( (n)       );       \
-}
-#endif
 
 #if defined(MBEDTLS_DHM_C)
 #if defined(MBEDTLS_BIGNUM_C)
@@ -82,35 +56,6 @@ typedef UINT32 uint32_t;
 #include "mbedtls/memory_buffer_alloc.h"
 #endif
 
-/**
- * This function just returns data from rand().
- * Although predictable and often similar on multiple
- * runs, this does not result in identical random on
- * each run. So do not use this if the results of a
- * test depend on the random data that is generated.
- *
- * rng_state shall be NULL.
- */
-static int rnd_std_rand( void *rng_state, unsigned char *output, size_t len )
-{
-#if !defined(__OpenBSD__)
-    size_t i;
-
-    if( rng_state != NULL )
-        rng_state  = NULL;
-
-    for( i = 0; i < len; ++i )
-        output[i] = rand();
-#else
-    if( rng_state != NULL )
-        rng_state = NULL;
-
-    arc4random_buf( output, len );
-#endif /* !OpenBSD */
-
-    return( 0 );
-}
-
 typedef struct
 {
     unsigned char *buf;
@@ -130,48 +75,6 @@ typedef struct
     uint32_t key[16];
     uint32_t v0, v1;
 } rnd_pseudo_info;
-
-/**
- * This function returns random based on a pseudo random function.
- * This means the results should be identical on all systems.
- * Pseudo random is based on the XTEA encryption algorithm to
- * generate pseudorandom.
- *
- * rng_state shall be a pointer to a rnd_pseudo_info structure.
- */
-static int rnd_pseudo_rand( void *rng_state, unsigned char *output, size_t len )
-{
-    rnd_pseudo_info *info = (rnd_pseudo_info *) rng_state;
-    uint32_t i, *k, sum, delta=0x9E3779B9;
-    unsigned char result[4], *out = output;
-
-    if( rng_state == NULL )
-        return( rnd_std_rand( NULL, output, len ) );
-
-    k = info->key;
-
-    while( len > 0 )
-    {
-        size_t use_len = ( len > 4 ) ? 4 : len;
-        sum = 0;
-
-        for( i = 0; i < 32; i++ )
-        {
-            info->v0 += ( ( ( info->v1 << 4 ) ^ ( info->v1 >> 5 ) )
-                            + info->v1 ) ^ ( sum + k[sum & 3] );
-            sum += delta;
-            info->v1 += ( ( ( info->v0 << 4 ) ^ ( info->v0 >> 5 ) )
-                            + info->v0 ) ^ ( sum + k[( sum>>11 ) & 3] );
-        }
-
-        PUT_UINT32_BE( info->v0, result, 0 );
-        memcpy( out, result, use_len );
-        len -= use_len;
-        out += 4;
-    }
-
-    return( 0 );
-}
 
 /**
  * Use Intel's DRNG to generate random numbers
@@ -240,69 +143,6 @@ dhm_compute_secret_ret_t dhm_compute_secret(uint8_t *remote_public)
     return_value.outcome = DHM_SUCCESS;
 exit:
     mbedtls_dhm_free( &dhm_ctx );
-    return return_value;
-}
-
-dhm_api_result_t dhm_test()
-{
-    dhm_api_result_t return_value;
-    mbedtls_dhm_context ctx_srv;
-    mbedtls_dhm_context ctx_cli;
-    unsigned char pub_srv[1000];
-    unsigned char pub_cli[1000];
-    unsigned char sec_srv[1000];
-    unsigned char sec_cli[1000];
-    size_t sec_srv_len;
-    size_t sec_cli_len;
-    int x_size;
-    rnd_pseudo_info rnd_info_srv;
-    rnd_pseudo_info rnd_info_cli;
-
-    mbedtls_dhm_init( &ctx_srv );
-    mbedtls_dhm_init( &ctx_cli );
-    //memset( ske, 0x00, 1000 );
-    memset( pub_srv, 0x00, 1000 );
-    memset( pub_cli, 0x00, 1000 );
-    memset( sec_srv, 0x00, 1000 );
-    memset( sec_cli, 0x00, 1000 );
-    memset( &rnd_info_srv, 0x00, sizeof( rnd_pseudo_info ) );
-    memset( &rnd_info_cli, 0x00, sizeof( rnd_pseudo_info ) );
-
-    return_value = DHM_FAILURE;
-    /*
-     * Set params
-     */
-    TEST_ASSERT( mbedtls_mpi_read_string( &ctx_srv.P, DHM_radix_P, MBEDTLS_DHM_RFC3526_MODP_3072_P ) == 0 );
-    TEST_ASSERT( mbedtls_mpi_read_string( &ctx_srv.G, DHM_radix_G, MBEDTLS_DHM_RFC3526_MODP_3072_G ) == 0 );
-    TEST_ASSERT( mbedtls_mpi_read_string( &ctx_cli.P, DHM_radix_P, MBEDTLS_DHM_RFC3526_MODP_3072_P ) == 0 );
-    TEST_ASSERT( mbedtls_mpi_read_string( &ctx_cli.G, DHM_radix_G, MBEDTLS_DHM_RFC3526_MODP_3072_G ) == 0 );
-    x_size = mbedtls_mpi_size( &ctx_srv.P );
-    ctx_cli.len = x_size;
-    ctx_srv.len = x_size;
-
-    /*
-     * Generate Public Keys
-     */
-    TEST_ASSERT( mbedtls_dhm_make_public( &ctx_srv, x_size, pub_srv, ctx_srv.len, &rnd_true_rand, &rnd_info_srv ) == 0 );
-    TEST_ASSERT( mbedtls_dhm_make_public( &ctx_cli, x_size, pub_cli, ctx_cli.len, &rnd_true_rand, &rnd_info_cli ) == 0 );
-
-    TEST_ASSERT( mbedtls_dhm_read_public( &ctx_srv, pub_cli, ctx_cli.len ) == 0 );
-    TEST_ASSERT( mbedtls_dhm_read_public( &ctx_cli, pub_srv, ctx_srv.len ) == 0 );
-
-    /*
-     * Compute secrets
-     */
-    TEST_ASSERT( mbedtls_dhm_calc_secret( &ctx_srv, sec_srv, sizeof( sec_srv ), &sec_srv_len, &rnd_true_rand, &rnd_info_srv ) == 0 );
-    TEST_ASSERT( mbedtls_dhm_calc_secret( &ctx_cli, sec_cli, sizeof( sec_cli ), &sec_cli_len, &rnd_true_rand, &rnd_info_cli ) == 0 );
-
-    TEST_ASSERT( sec_srv_len == sec_cli_len );
-    TEST_ASSERT( sec_srv_len != 0 );
-    TEST_ASSERT( memcmp( sec_srv, sec_cli, sec_srv_len ) == 0 );
-    return_value = DHM_SUCCESS;
-
-exit:
-    mbedtls_dhm_free( &ctx_srv );
-    mbedtls_dhm_free( &ctx_cli );
     return return_value;
 }
 
