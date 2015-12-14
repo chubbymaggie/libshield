@@ -49,6 +49,28 @@ void L_main()
   if (send_result == CHANNEL_FAILURE) { exit(1); }
   send_result = channel_send(return_value.dhm_sec, return_value.dhm_sec_size);  
   if (send_result == CHANNEL_FAILURE) { exit(1); }
+
+  uint8_t ciphertext[128];
+  uint8_t tag[16];
+  uint8_t cleartext[128];
+  memcpy(cleartext, "pldi2016", strlen("pldi2016") + 1);
+  aes_gcm_encrypt_and_tag(return_value.dhm_sec, cleartext, iv, tag, ciphertext);  
+  send_result = channel_send(ciphertext, sizeof(ciphertext));
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send(tag, sizeof(tag));
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send(iv, sizeof(iv));
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+
+  uint8_t remote_ciphertext[160];
+  uint8_t out_cleartext[128];
+  memset(out_cleartext, 0x00, sizeof(out_cleartext));
+  recv_result = channel_recv(remote_ciphertext, sizeof(remote_ciphertext));
+  if (recv_result == CHANNEL_FAILURE) { exit(1); }
+  aes_gcm_decrypt_and_verify(return_value.dhm_sec, remote_ciphertext, remote_ciphertext + 144, remote_ciphertext + 128, out_cleartext); 
+
+  send_result = channel_send(out_cleartext, sizeof(out_cleartext));
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
 }
 
 void sir_main() 
