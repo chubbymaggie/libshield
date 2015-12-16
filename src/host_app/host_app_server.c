@@ -15,6 +15,7 @@
 
 typedef void (*sir_init_t)(uint8_t *, uint8_t *, uint8_t *, uint8_t *);
 typedef void (*sir_main_t)();
+typedef void (*sir_compute_t)();
 
 int main(int argc, char **argv)
 {
@@ -38,6 +39,7 @@ int main(int argc, char **argv)
     }
     sir_init_t sir_init = (sir_init_t) dlsym(handle, "sir_init");
     sir_main_t sir_main = (sir_main_t) dlsym(handle, "sir_main");
+    sir_compute_t sir_compute = (sir_compute_t) dlsym(handle, "sir_compute");
     
     /* allocate memory for SIR heap and SIR stack */
     /* This code will be supplanted by CreateIsolatedRegion */
@@ -110,5 +112,10 @@ int main(int argc, char **argv)
     zmq_recv(socket, remote_ciphertext, sizeof(remote_ciphertext), 0);
     memcpy(ptr3 + sizeof(remote_public), remote_ciphertext, sizeof(remote_ciphertext));
 
+    zsocket_destroy(ctx, socket);
+    zctx_destroy(&ctx);
+
+    sir_compute();
     printf("answer: %s\n", (uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 160);
+
 }

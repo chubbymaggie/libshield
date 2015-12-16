@@ -110,5 +110,8 @@ int main(int argc, char **argv)
     memcpy(local_ciphertext + 128, ((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 128), 16);
     memcpy(local_ciphertext + 144, ((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 144), 16);
     zmq_send(socket, local_ciphertext, sizeof(local_ciphertext), 0);
+
+    zsocket_destroy(ctx, socket);
+    zctx_destroy(&ctx);
 }
 
