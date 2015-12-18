@@ -14,7 +14,7 @@
 #define SIR_SENDBUFSIZE 4096
 
 typedef void (*sir_init_t)(uint8_t *, uint8_t *, uint8_t *, uint8_t *);
-typedef void (*sir_main_t)();
+typedef void (*sir_entry_t)();
 
 int main(int argc, char **argv)
 {
@@ -37,7 +37,7 @@ int main(int argc, char **argv)
         exit(1);
     }
     sir_init_t sir_init = (sir_init_t) dlsym(handle, "sir_init");
-    sir_main_t sir_main = (sir_main_t) dlsym(handle, "sir_main");
+    sir_entry_t sir_entry = (sir_entry_t) dlsym(handle, "sir_entry");
     
     /* allocate memory for SIR heap and SIR stack */
     /* This code will be supplanted by CreateIsolatedRegion */
@@ -62,8 +62,8 @@ int main(int argc, char **argv)
     zmq_send(socket, ptr4, 1000, 0);
     memcpy(ptr3, remote_public, sizeof(remote_public));
     printf("Computing Diffie-Hellman-Merkle secret...\n");
-    printf("<<<<<<<<<<<<<< sir_main() >>>>>>>>>>>>>>>>>\n");
-    sir_main();
+    printf("<<<<<<<<<<<<<< sir_entry() >>>>>>>>>>>>>>>>>\n");
+    sir_entry();
 
     /* post-SIR computation, which should start with DestroyIsolatedRegion */
     printf("sir says: %s\n", ptr4);
@@ -120,8 +120,8 @@ int main(int argc, char **argv)
     zsocket_destroy(ctx, socket);
     zctx_destroy(&ctx);
 
-    printf("<<<<<<<<<<<<<< sir_main() >>>>>>>>>>>>>>>>>\n");
-    sir_main();
+    printf("<<<<<<<<<<<<<< sir_entry() >>>>>>>>>>>>>>>>>\n");
+    sir_entry();
 
     printf("answer: %s\n", (uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 160);
 

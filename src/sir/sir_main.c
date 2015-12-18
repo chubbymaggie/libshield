@@ -12,7 +12,6 @@ static uint8_t * send_buf;
 static dhm_compute_secret_ret_t dhm_secret;
 
 extern void mbedtls_memory_buffer_alloc_init( unsigned char *buf, size_t len );
-//extern void mbedtls_memory_buffer_alloc_free();
 
 static uint64_t sir_rsp, host_rsp;
 
@@ -41,7 +40,7 @@ void yield()
   __asm("popq %%rbp":::);
 }
 
-void sir_main() 
+void sir_entry() 
 {
   __asm("pushq %%rbp":::);
   __asm("pushq %%rbx":::);
@@ -64,7 +63,8 @@ void L_main()
   char *hello = "Hello World!";
   uint8_t iv[16];
   int r;
-  uint8_t remote_public[1000];
+  uint8_t remote_public_dhm[1000];
+  dhm_make_public_params_ret_t local_public_dhm;
   uint8_t ciphertext[128];
   uint8_t remote_ciphertext[160];
   uint8_t tag[16];
@@ -74,12 +74,21 @@ void L_main()
   aes_gcm_api_result_t aes_result;
   uint8_t constant_one = 1;
 
+  channel_send_init(send_buf, 4096);
+  channel_recv_init(recv_buf, 4096);
+  mbedtls_memory_buffer_alloc_init( heap_buf, 1048576 );
+  local_public_dhm = dhm_make_public_params();
+  if (local_public_dhm.outcome == DHM_FAILURE) { exit(1); }
+  send_result = channel_send(local_public_dhm.dhm_pub, 1000);
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  channel_send_reset();
+
   yield();
 
   /* recv remote's DHM public key */
-  recv_result = channel_recv(remote_public, 1000);
+  recv_result = channel_recv(remote_public_dhm, 1000);
   if (recv_result == CHANNEL_FAILURE) { exit(1); }
-  dhm_secret = dhm_compute_secret(remote_public);
+  dhm_secret = dhm_compute_secret(remote_public_dhm);
   if (dhm_secret.outcome == DHM_FAILURE) { exit(1); }
 
   /* output some junk */
@@ -127,24 +136,6 @@ void L_main()
 }
 
 
-void L_init() 
-{
-  channel_api_result_t send_result;
-  dhm_make_public_params_ret_t return_value;
-
-  channel_send_init(send_buf, 4096);
-  channel_recv_init(recv_buf, 4096);
-  mbedtls_memory_buffer_alloc_init( heap_buf, 1048576 );
-  return_value = dhm_make_public_params();
-  if (return_value.outcome == DHM_FAILURE) { exit(1); }
-  send_result = channel_send(return_value.dhm_pub, 1000);
-  if (send_result == CHANNEL_FAILURE) { exit(1); }
-  channel_send_reset();
-  L_main();
-}
-
-
-
 void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send) 
 {
   __asm("pushq %%rbp":::);
@@ -163,8 +154,6 @@ void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send)
   recv_buf = recv; 
   send_buf = send;
 
-  L_init();
-
-  //__asm("movq %0, %%rsp"::"r"(host_rsp):);
+  L_main();
 }
 
