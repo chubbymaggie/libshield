@@ -66,7 +66,7 @@ void L_main()
   int r;
   uint8_t remote_public[1000];
   uint8_t ciphertext[128];
-  uint8_t remote_ciphertext[128];
+  uint8_t remote_ciphertext[160];
   uint8_t tag[16];
   uint8_t cleartext[128];
   uint8_t out_cleartext[128];

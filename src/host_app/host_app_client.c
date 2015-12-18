@@ -97,6 +97,11 @@ int main(int argc, char **argv)
     {
 	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 128 + i));
 	}
+    printf(", along with the iv: ");
+	for (i = 0; i < 16; ++i)
+    {
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 144 + i));
+	}
     printf("\n");
 
     uint8_t remote_ciphertext[160];

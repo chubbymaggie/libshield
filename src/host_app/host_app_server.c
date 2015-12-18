@@ -55,12 +55,14 @@ int main(int argc, char **argv)
 
     printf("Creating SIR...\n");
     //sir_init(stack_region, heap_region, input_region, output_region)
+    printf("<<<<<<<<<<<<<< sir_init() >>>>>>>>>>>>>>>>>\n");
     sir_init(ptr1, ptr2, ptr3, ptr4);
 
     printf("Sending SIR's DMH public key to remote...\n");
     zmq_send(socket, ptr4, 1000, 0);
     memcpy(ptr3, remote_public, sizeof(remote_public));
     printf("Computing Diffie-Hellman-Merkle secret...\n");
+    printf("<<<<<<<<<<<<<< sir_main() >>>>>>>>>>>>>>>>>\n");
     sir_main();
 
     /* post-SIR computation, which should start with DestroyIsolatedRegion */
@@ -96,6 +98,11 @@ int main(int argc, char **argv)
     {
 	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 128 + i));
 	}
+    printf(", along with the iv: ");
+	for (i = 0; i < 16; ++i)
+    {
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 144 + i));
+	}
     printf("\n");
     
     printf("sending ciphertext to remote...\n"); 
@@ -113,6 +120,7 @@ int main(int argc, char **argv)
     zsocket_destroy(ctx, socket);
     zctx_destroy(&ctx);
 
+    printf("<<<<<<<<<<<<<< sir_main() >>>>>>>>>>>>>>>>>\n");
     sir_main();
 
     printf("answer: %s\n", (uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 160);
