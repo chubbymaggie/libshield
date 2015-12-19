@@ -9,11 +9,9 @@ static uint8_t * stack_buf;
 static uint8_t * heap_buf;
 static uint8_t * recv_buf;
 static uint8_t * send_buf;
-static dhm_compute_secret_ret_t dhm_secret;
+static uint64_t sir_rsp, host_rsp;
 
 extern void mbedtls_memory_buffer_alloc_init( unsigned char *buf, size_t len );
-
-static uint64_t sir_rsp, host_rsp;
 
 void exit(int status)
 {
@@ -61,35 +59,36 @@ void sir_entry()
 void L_main() 
 {
   char *hello = "Hello World!";
-  uint8_t iv[16];
   int r;
-  uint8_t remote_public_dhm[1000];
-  dhm_make_public_params_ret_t local_public_dhm;
-  uint8_t ciphertext[128];
+  sir_dhm_context_t sir_dhm_context;
   uint8_t remote_ciphertext[160];
+  uint8_t ciphertext[128];
   uint8_t tag[16];
+  uint8_t iv[16];
   uint8_t cleartext[128];
   uint8_t out_cleartext[128];
   channel_api_result_t send_result, recv_result;
   aes_gcm_api_result_t aes_result;
+  dhm_api_result_t dhm_result;
   uint8_t constant_one = 1;
+  size_t constant_384 = 384;
 
   channel_send_init(send_buf, 4096);
   channel_recv_init(recv_buf, 4096);
   mbedtls_memory_buffer_alloc_init( heap_buf, 1048576 );
-  local_public_dhm = dhm_make_public_params();
-  if (local_public_dhm.outcome == DHM_FAILURE) { exit(1); }
-  send_result = channel_send(local_public_dhm.dhm_pub, 1000);
+  dhm_result = dhm_make_public_params(&sir_dhm_context);
+  if (dhm_result == DHM_FAILURE) { exit(1); }
+  send_result = channel_send(sir_dhm_context.public_component, 1000);
   if (send_result == CHANNEL_FAILURE) { exit(1); }
   channel_send_reset();
 
   yield();
 
   /* recv remote's DHM public key */
-  recv_result = channel_recv(remote_public_dhm, 1000);
+  recv_result = channel_recv(sir_dhm_context.remote_component, 1000);
   if (recv_result == CHANNEL_FAILURE) { exit(1); }
-  dhm_secret = dhm_compute_secret(remote_public_dhm);
-  if (dhm_secret.outcome == DHM_FAILURE) { exit(1); }
+  dhm_result = dhm_compute_secret(&sir_dhm_context);
+  if (dhm_result == DHM_FAILURE) { exit(1); }
 
   /* output some junk */
   memset(iv, 0, 16);
@@ -102,13 +101,13 @@ void L_main()
   if (send_result == CHANNEL_FAILURE) { exit(1); }
   send_result = channel_send(iv, 16);
   if (send_result == CHANNEL_FAILURE) { exit(1); }
-  send_result = channel_send((uint8_t *) &dhm_secret.dhm_sec_size, sizeof(uint64_t));  
+  send_result = channel_send((uint8_t *) &constant_384, sizeof(uint64_t));  
   if (send_result == CHANNEL_FAILURE) { exit(1); }
-  send_result = channel_send(dhm_secret.dhm_sec, dhm_secret.dhm_sec_size);  
+  send_result = channel_send(sir_dhm_context.secret_component, sizeof(sir_dhm_context.secret_component));  
   if (send_result == CHANNEL_FAILURE) { exit(1); }
 
   memcpy(cleartext, "pldi2016", strlen("pldi2016") + 1);
-  aes_result = aes_gcm_encrypt_and_tag(dhm_secret.dhm_sec, cleartext, iv, tag, ciphertext);  
+  aes_result = aes_gcm_encrypt_and_tag(sir_dhm_context.secret_component, cleartext, iv, tag, ciphertext);  
   if (aes_result == AES_GCM_FAILURE) { exit(1); }
   send_result = channel_send(ciphertext, sizeof(ciphertext));
   if (send_result == CHANNEL_FAILURE) { exit(1); }
@@ -122,7 +121,7 @@ void L_main()
   memset(out_cleartext, 0x00, sizeof(out_cleartext));
   recv_result = channel_recv(remote_ciphertext, sizeof(remote_ciphertext));
   if (recv_result == CHANNEL_FAILURE) { exit(1); }
-  aes_result = aes_gcm_decrypt_and_verify( dhm_secret.dhm_sec, 
+  aes_result = aes_gcm_decrypt_and_verify( sir_dhm_context.secret_component, 
                                            remote_ciphertext, 
                                            remote_ciphertext + 144, 
                                            remote_ciphertext + 128, 
