@@ -69,7 +69,9 @@ int main(int argc, char **argv)
     uint8_t is_rand_success = *((uint8_t *) ptr4 + strlen(ptr4) + 1);
     if (is_rand_success == 1) {
       uint8_t iv[16];
+      uint8_t random_bytes[16];
       memcpy(iv, ptr4 + strlen(ptr4) + 2, 16);
+      memcpy(random_bytes, ptr4 + strlen(ptr4) + 18, 16);
       int i;
       printf("sir gives us random bytes: ");
 	  for (i = 0; i < 16; ++i)
@@ -77,30 +79,36 @@ int main(int argc, char **argv)
 		 printf("%02x", iv[i]);
 	  }
       printf("\n");
+      printf("sir gives us random bytes: ");
+	  for (i = 0; i < 16; ++i)
+      {
+		 printf("%02x", random_bytes[i]);
+	  }
+      printf("\n");
     }
     uint64_t secret_size;
-    memcpy(&secret_size, (uint8_t *) ptr4 + strlen(ptr4) + 18, sizeof(uint64_t));
+    memcpy(&secret_size, (uint8_t *) ptr4 + strlen(ptr4) + 34, sizeof(uint64_t));
     printf("sir computes a secret of size %lu bytes: ", secret_size);
 	for (i = 0; i < secret_size; ++i)
     {
-	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + i));
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + i));
 	}
     printf("\n");
 
     printf("sir computes a ciphertext: ");
 	for (i = 0; i < 128; ++i)
     {
-	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + i));
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + secret_size + i));
 	}
     printf(", along with the tag: ");
 	for (i = 0; i < 16; ++i)
     {
-	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 128 + i));
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + secret_size + 128 + i));
 	}
     printf(", along with the iv: ");
 	for (i = 0; i < 16; ++i)
     {
-	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 144 + i));
+	  printf("%02x", *((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + secret_size + 144 + i));
 	}
     printf("\n");
 
@@ -111,9 +119,9 @@ int main(int argc, char **argv)
 
     printf("sending ciphertext to remote...\n"); 
     uint8_t local_ciphertext[160];
-    memcpy(local_ciphertext, ((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size), 128);
-    memcpy(local_ciphertext + 128, ((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 128), 16);
-    memcpy(local_ciphertext + 144, ((uint8_t *) ptr4 + strlen(ptr4) + 18 + sizeof(uint64_t) + secret_size + 144), 16);
+    memcpy(local_ciphertext, ((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + secret_size), 128);
+    memcpy(local_ciphertext + 128, ((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + secret_size + 128), 16);
+    memcpy(local_ciphertext + 144, ((uint8_t *) ptr4 + strlen(ptr4) + 34 + sizeof(uint64_t) + secret_size + 144), 16);
     zmq_send(socket, local_ciphertext, sizeof(local_ciphertext), 0);
 
     zsocket_destroy(ctx, socket);

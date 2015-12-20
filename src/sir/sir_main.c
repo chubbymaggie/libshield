@@ -59,12 +59,13 @@ void sir_entry()
 void L_main() 
 {
   char *hello = "Hello World!";
-  int r;
+  int rng_result;
   sir_dhm_context_t sir_dhm_context;
   uint8_t remote_ciphertext[160];
   uint8_t ciphertext[128];
   uint8_t tag[16];
   uint8_t iv[16];
+  uint8_t random_bytes[16];
   uint8_t cleartext[128];
   uint8_t out_cleartext[128];
   channel_api_result_t send_result, recv_result;
@@ -92,14 +93,18 @@ void L_main()
 
   /* output some junk */
   memset(iv, 0, 16);
-  r = rdrand_get_bytes(16, iv);
-  if (r != DRNG_SUCCESS) { exit(1); }
+  rng_result = rdrand_get_bytes(16, iv);
+  if (rng_result != DRNG_SUCCESS) { exit(1); }
+  rng_result = rdrand_get_bytes(16, random_bytes);
+  if (rng_result != DRNG_SUCCESS) { exit(1); }
 
   send_result = channel_send((uint8_t *) hello, strlen(hello) + 1);
   if (send_result == CHANNEL_FAILURE) { exit(1); }
   send_result = channel_send(&constant_one, sizeof(uint8_t));
   if (send_result == CHANNEL_FAILURE) { exit(1); }
   send_result = channel_send(iv, 16);
+  if (send_result == CHANNEL_FAILURE) { exit(1); }
+  send_result = channel_send(random_bytes, 16);
   if (send_result == CHANNEL_FAILURE) { exit(1); }
   send_result = channel_send((uint8_t *) &constant_384, sizeof(uint64_t));  
   if (send_result == CHANNEL_FAILURE) { exit(1); }
