@@ -22,6 +22,10 @@ typedef struct
     uint32_t v0, v1;
 } rnd_pseudo_info;
 
+/** A struct of type sir_dhm_context_t has all state needed during a DHM exchange
+ *   - Caller must allocate the sir_dhm_context_t struct.
+ *   - Caller must pass that struct to each API call declared below.
+ */
 typedef struct {
   mbedtls_dhm_context mbedtls_ctx; /* mbedtls maintains all DHM state in this data structure */
   rnd_pseudo_info rnd_info;        /* random number generator state */
@@ -29,11 +33,6 @@ typedef struct {
   uint8_t remote_component[1000];  /* contains P, G, and G^Y mod P (secret Y) */
   uint8_t secret_component[384];   /* secret computed using G^X mod P and G^Y mod P */ 
 } sir_dhm_context_t;
-
-/** NOTES:
- *     - Caller must allocate the sir_dhm_context_t struct.
- *     - Caller must pass that struct to each API call declared below.
- */
 
 /**
  * \brief                        Generate P, G, and G^X mod P. 
