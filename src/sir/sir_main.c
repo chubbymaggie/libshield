@@ -59,6 +59,7 @@ void sir_entry()
 void L_main() 
 {
   char *hello = "Hello World!";
+  char *passphrase = "hellofirst";
   int rng_result;
   sir_dhm_context_t sir_dhm_context;
   uint8_t remote_ciphertext[160];
@@ -74,14 +75,12 @@ void L_main()
   uint8_t constant_one = 1;
   size_t constant_384 = 384;
 
-  channel_send_init(send_buf, 4096);
-  channel_recv_init(recv_buf, 4096);
+  init_channel(send_buf, 4096, recv_buf, 4096, NULL);
   mbedtls_memory_buffer_alloc_init( heap_buf, 1048576 );
   dhm_result = dhm_make_public_params(&sir_dhm_context);
   if (dhm_result == DHM_FAILURE) { exit(1); }
   send_result = channel_send(sir_dhm_context.public_component, 1000);
   if (send_result == CHANNEL_FAILURE) { exit(1); }
-  channel_send_reset();
 
   yield();
 
@@ -134,6 +133,16 @@ void L_main()
   if (aes_result == AES_GCM_FAILURE) { exit(1); }
   send_result = channel_send(out_cleartext, sizeof(out_cleartext));
   if (send_result == CHANNEL_FAILURE) { exit(1); }
+
+  yield();
+
+  init_channel(send_buf, 4096, recv_buf, 4096, sir_dhm_context.secret_component);
+  sir_send((uint8_t *) passphrase, strlen(passphrase) + 1);
+
+  yield();
+
+  sir_recv(cleartext, strlen(passphrase) + 1);
+  channel_send(cleartext, strlen(passphrase) + 1);
 
   yield();
   //while (1) { yield(); }
