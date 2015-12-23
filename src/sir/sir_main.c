@@ -1,65 +1,30 @@
 #include <string.h>
 #include <stdint.h>
+#include "platform.h"
 #include "rand/drng.h"
+#include "crypto/include/mbedtls/memory_buffer_alloc.h"
 #include "sir_dhm.h"
 #include "sir_aes_gcm.h"
 #include "sir_channel.h"
 
-static uint8_t * stack_buf;
-static uint8_t * heap_buf;
-static uint8_t * recv_buf;
-static uint8_t * send_buf;
-static uint64_t sir_rsp, host_rsp;
-
-extern void mbedtls_memory_buffer_alloc_init( unsigned char *buf, size_t len );
-
-void exit(int status)
+void U_main()
 {
-  (void) status; //to supress unused parameter warning
-  __asm("int3");
-  while(1) { }
-}
+  uint8_t cleartext[128];
+  char *passphrase = "hellofirst";
 
-void yield()
-{
-  __asm("pushq %%rbp":::);
-  __asm("pushq %%rbx":::);
-  __asm("pushq %%r12":::);
-  __asm("pushq %%r13":::);
-  __asm("pushq %%r14":::);
-  __asm("pushq %%r15":::);
-  __asm("movq %%rsp, %0":"=r"(sir_rsp)::);
-  __asm("movq %0, %%rsp"::"r"(host_rsp):);
-  __asm("popq %%r15":::);
-  __asm("popq %%r14":::);
-  __asm("popq %%r13":::);
-  __asm("popq %%r12":::);
-  __asm("popq %%rbx":::);
-  __asm("popq %%rbp":::);
-}
+  sir_send((uint8_t *) passphrase, strlen(passphrase) + 1);
 
-void sir_entry() 
-{
-  __asm("pushq %%rbp":::);
-  __asm("pushq %%rbx":::);
-  __asm("pushq %%r12":::);
-  __asm("pushq %%r13":::);
-  __asm("pushq %%r14":::);
-  __asm("pushq %%r15":::);
-  __asm("movq %%rsp, %0":"=r"(host_rsp)::);
-  __asm("movq %0, %%rsp"::"r"(sir_rsp):);
-  __asm("popq %%r15":::);
-  __asm("popq %%r14":::);
-  __asm("popq %%r13":::);
-  __asm("popq %%r12":::);
-  __asm("popq %%rbx":::);
-  __asm("popq %%rbp":::);
+  yield();
+
+  sir_recv(cleartext, strlen(passphrase) + 1);
+  channel_send(cleartext, strlen(passphrase) + 1);
+
+  yield();
 }
 
 void L_main() 
 {
   char *hello = "Hello World!";
-  char *passphrase = "hellofirst";
   int rng_result;
   sir_dhm_context_t sir_dhm_context;
   uint8_t remote_ciphertext[160];
@@ -75,8 +40,8 @@ void L_main()
   uint8_t constant_one = 1;
   size_t constant_384 = 384;
 
-  init_channel(send_buf, 4096, recv_buf, 4096, NULL);
-  mbedtls_memory_buffer_alloc_init( heap_buf, 1048576 );
+  init_channel(platform_config.send_buf, 4096, platform_config.recv_buf, 4096, NULL);
+  mbedtls_memory_buffer_alloc_init( platform_config.heap_buf, 1048576 );
   dhm_result = dhm_make_public_params(&sir_dhm_context);
   if (dhm_result == DHM_FAILURE) { exit(1); }
   send_result = channel_send(sir_dhm_context.public_component, 1000);
@@ -111,7 +76,11 @@ void L_main()
   if (send_result == CHANNEL_FAILURE) { exit(1); }
 
   memcpy(cleartext, "pldi2016", strlen("pldi2016") + 1);
-  aes_result = aes_gcm_encrypt_and_tag(sir_dhm_context.secret_component, cleartext, iv, tag, ciphertext);  
+  aes_result = aes_gcm_encrypt_and_tag(sir_dhm_context.secret_component, 
+                                       cleartext, 
+                                       iv, 
+                                       tag, 
+                                       ciphertext);  
   if (aes_result == AES_GCM_FAILURE) { exit(1); }
   send_result = channel_send(ciphertext, sizeof(ciphertext));
   if (send_result == CHANNEL_FAILURE) { exit(1); }
@@ -136,37 +105,10 @@ void L_main()
 
   yield();
 
-  init_channel(send_buf, 4096, recv_buf, 4096, sir_dhm_context.secret_component);
-  sir_send((uint8_t *) passphrase, strlen(passphrase) + 1);
-
-  yield();
-
-  sir_recv(cleartext, strlen(passphrase) + 1);
-  channel_send(cleartext, strlen(passphrase) + 1);
-
-  yield();
-  //while (1) { yield(); }
+  init_channel(platform_config.send_buf, 4096, 
+               platform_config.recv_buf, 4096, 
+               sir_dhm_context.secret_component);
+  U_main();
 }
 
-
-void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send) 
-{
-  __asm("pushq %%rbp":::);
-  __asm("pushq %%rbx":::);
-  __asm("pushq %%r12":::);
-  __asm("pushq %%r13":::);
-  __asm("pushq %%r14":::);
-  __asm("pushq %%r15":::);
-
-  __asm("movq %%rsp, %0":"=r"(host_rsp)::);
-  sir_rsp = (uint64_t) stack + 1048568;
-  __asm("movq %0, %%rsp"::"r"(sir_rsp):);
-
-  stack_buf = (uint8_t *) sir_rsp;
-  heap_buf = (uint8_t *) heap;
-  recv_buf = recv; 
-  send_buf = send;
-
-  L_main();
-}
 

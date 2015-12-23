@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include "platform.h"
 #include "sir_channel.h"
 #include "sir_aes_gcm.h"
 #include "rand/drng.h"
