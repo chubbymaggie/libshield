@@ -4,8 +4,9 @@ SIRs can be thought of as containers containing both code and data, which can no
 It provides strong security guaranteees (such as confidentiality) in the presence of an untrusted software stack.
 The threat model considers all non-SIR code (the host application, operating system, hypervisor, SMM code, etc.) to be compromised or malicious. 
 oyster provides the SIR developer with the following core primitives:
-  * Communication: send and recv operations for arbitrary sized data on a secure channel. The secure channel is established with trusted remote parties using the Diffie-Hellman-Merkle protocol for symmetric key exchange.
-  * Memory management: malloc and free operations for arbitrary sized regions
+  * Communication: `send` and `recv` operations for arbitrary sized data on a secure channel. The secure channel is established with trusted remote parties using the Diffie-Hellman-Merkle protocol for symmetric key exchange.
+  * Memory management: `malloc` and `free` operations for arbitrary sized regions
+  * File System: `read` and `write` operations with confidentiality, integrity, and rollback-protection. It also offers protection from certain side channels.
 
 oyster incurs the following dependencies:
   * [libmbedtls-2.1.1](https://tls.mbed.org) for cryptographic primitives.
@@ -15,8 +16,8 @@ Since the operating system is untrusted, oyster does not use the C standard libr
 This also reduces the size of our trusted computing base.
 
 ## Installation
- * Compilation: run make in the parent directory
- * Running: run bin/app_host
+ * Compilation: run `make` in the parent directory
+ * Running: execute `bin/host_server_app` and `bin/host_client_app`
 
 ## Disclaimer
 Work in progress, highly experimental.
