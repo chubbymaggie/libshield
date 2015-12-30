@@ -5,6 +5,7 @@
 #include <string.h>
 #include <assert.h>
 #include <czmq.h>
+#include "../common/message.h"
 
 /* these parameters should be in a SIR config file */
 #define SIR_URL "./libsir.so"
@@ -18,17 +19,16 @@ typedef void (*sir_entry_t)();
 
 int main(int argc, char **argv)
 {
-    int i;
+    int i, success;
+    sir_message_header_t msg_header;
     zctx_t *ctx = zctx_new();
     assert (ctx);
-    void *socket = zsocket_new(ctx, ZMQ_PAIR);
-    int success = zsocket_bind (socket, "tcp://127.0.0.1:5555");
-    assert (success = 5555);
-    printf("Waiting for requests on tcp://127.0.0.1:5555...\n");
+    void *inbound_socket = zsocket_new(ctx, ZMQ_PULL);
+    success = zsocket_bind (inbound_socket, "tcp://127.0.0.1:5555");
+    void *outbound_socket = zsocket_new(ctx, ZMQ_PUSH);
+    success = zsocket_bind (outbound_socket, "tcp://127.0.0.1:5556");
 
-    uint8_t remote_public[1000];
-    printf("Recieving remote's DMH public key...\n");
-    zmq_recv(socket, remote_public, sizeof(remote_public), 0);
+    printf("Connecting to remote on tcp://127.0.0.1:5555 and tcp://127.0.0.1:5556...\n");
 
     //grab handle to sir main function
     void *handle = dlopen(SIR_URL, RTLD_LAZY);
@@ -53,102 +53,79 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    printf("Creating SIR...\n");
-    //sir_init(stack_region, heap_region, input_region, output_region)
-    printf("<<<<<<<<<<<<<< sir_init() >>>>>>>>>>>>>>>>>\n");
+    printf("Entering SIR to compute DMH public key...\n");
+
     sir_init(ptr1, ptr2, ptr3, ptr4);
 
+    uint8_t *current_recv_ptr = ptr3;
+    uint8_t *current_send_ptr = ptr4;
+
+    memcpy(&msg_header, current_send_ptr, sizeof(msg_header));
+    assert (msg_header.message_size == 1000 && 
+            msg_header.message_type == SEND_DHM_PUBLIC);
+    current_send_ptr += sizeof(msg_header);
+    //send_buffer has 1000 bytes of DHM public parameters
     printf("Sending SIR's DMH public key to remote...\n");
-    zmq_send(socket, ptr4, 1000, 0);
-    memcpy(ptr3, remote_public, sizeof(remote_public));
+    zmq_send(outbound_socket, current_send_ptr, 1000, 0);
+    current_send_ptr += 1000;
+
+    sir_entry();
+
+    memcpy(&msg_header, current_send_ptr, sizeof(msg_header));
+    current_send_ptr += sizeof(msg_header);
+    assert (msg_header.message_size == 1000 && 
+            msg_header.message_type == RECV_DHM_PUBLIC);
+    uint8_t remote_public[1000];
+    printf("Recieving remote's DMH public key...\n");
+    zmq_recv(inbound_socket, remote_public, sizeof(remote_public), 0); 
+
+    memcpy(current_recv_ptr, remote_public, sizeof(remote_public));
+    current_recv_ptr += sizeof(remote_public);
+
+    current_recv_ptr = ptr3;
+    current_send_ptr = ptr4;
+
     printf("Computing Diffie-Hellman-Merkle secret...\n");
-    printf("<<<<<<<<<<<<<< sir_entry() >>>>>>>>>>>>>>>>>\n");
     sir_entry();
 
-    uint8_t *current_ptr4 = ptr4 + 1000;
-    /* post-SIR computation, which should start with DestroyIsolatedRegion */
-    printf("sir says: %s\n", current_ptr4);
-    uint8_t is_rand_success = *((uint8_t *) current_ptr4 + strlen(current_ptr4) + 1);
-    if (is_rand_success == 1) {
-      uint8_t iv[16];
-      uint8_t random_bytes[16];
-      memcpy(iv, current_ptr4 + strlen(current_ptr4) + 2, 16);
-      memcpy(random_bytes, current_ptr4 + strlen(current_ptr4) + 18, 16);
-      int i;
-      printf("sir gives us random bytes: ");
-	  for (i = 0; i < 16; ++i)
-      {
-		 printf("%02x", iv[i]);
-	  }
-      printf("\n");
-      printf("sir gives us random bytes: ");
-	  for (i = 0; i < 16; ++i)
-      {
-		 printf("%02x", random_bytes[i]);
-	  }
-      printf("\n");
-    }
-    uint64_t secret_size;
-    memcpy(&secret_size, (uint8_t *) current_ptr4 + strlen(current_ptr4) + 34, sizeof(uint64_t));
-    printf("sir computes a secret of size %lu bytes: ", secret_size);
-	for (i = 0; i < secret_size; ++i)
-    {
-	  printf("%02x", *((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + i));
-	}
-    printf("\n");
+    do {
+      memcpy(&msg_header, current_send_ptr, sizeof(msg_header));
+      current_send_ptr += sizeof(msg_header);
 
-    printf("sir computes a ciphertext: ");
-	for (i = 0; i < 128; ++i)
-    {
-	  printf("%02x", *((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size + i));
-	}
-    printf(", along with the tag: ");
-	for (i = 0; i < 16; ++i)
-    {
-	  printf("%02x", *((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size + 128 + i));
-	}
-    printf(", along with the iv: ");
-	for (i = 0; i < 16; ++i)
-    {
-	  printf("%02x", *((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size + 144 + i));
-	}
-    printf("\n");
-    
-    printf("sending ciphertext to remote...\n"); 
-    uint8_t local_ciphertext[160];
-    memcpy(local_ciphertext, ((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size), 128);
-    memcpy(local_ciphertext + 128, ((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size + 128), 16);
-    memcpy(local_ciphertext + 144, ((uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size + 144), 16);
-    zmq_send(socket, local_ciphertext, sizeof(local_ciphertext), 0);
+      if (msg_header.message_type == RECV_ENCRYPTED_MESSAGE ||
+          msg_header.message_type == RECV_MESSAGE) {
+        printf("Handling RECV command from SIR\n");
+        char *payload = malloc(msg_header.message_size);  
+        if (! payload) { exit(1); }
+        zmq_recv(inbound_socket, payload, msg_header.message_size, 0);
+        memcpy(current_recv_ptr, payload, msg_header.message_size);
+        current_recv_ptr += msg_header.message_size;
+      }
+      else if (msg_header.message_type == SEND_ENCRYPTED_MESSAGE ||
+               msg_header.message_type == SEND_MESSAGE) {
+        printf("Handling SEND command from SIR\n");
+        zmq_send(outbound_socket, current_send_ptr, msg_header.message_size, 0);
+        current_send_ptr += msg_header.message_size;
+      }
+      else if (msg_header.message_type == PRINT_DEBUG_MESSAGE) {
+        printf("Handling PRINT command from SIR\n");
+        char *payload = malloc(msg_header.message_size);  
+        if (! payload) { exit(1); }
+        memcpy(payload, current_send_ptr, msg_header.message_size);
+        current_send_ptr += msg_header.message_size;
+        printf("sir says: %s\n", payload);
+        free(payload);
+      }
+      else if (msg_header.message_type == EXIT_MESSAGE) {
+        printf("Handling EXIT command from SIR\n");
+        break;
+      }
 
-    uint8_t remote_ciphertext[160];
-    printf("recieving ciphertext from remote...\n"); 
-    zmq_recv(socket, remote_ciphertext, sizeof(remote_ciphertext), 0);
-    memcpy(ptr3 + sizeof(remote_public), remote_ciphertext, sizeof(remote_ciphertext));
+      sir_entry();
+    } while (true);
 
-    printf("<<<<<<<<<<<<<< sir_entry() >>>>>>>>>>>>>>>>>\n");
-    sir_entry();
-
-    printf("answer: %s\n", (uint8_t *) current_ptr4 + strlen(current_ptr4) + 34 + sizeof(uint64_t) + secret_size + 160);
-
-    printf("<<<<<<<<<<<<<< sir_entry() >>>>>>>>>>>>>>>>>\n");
-    sir_entry();
-
-    printf("sending ciphertext to remote...\n"); 
-    memcpy(local_ciphertext, (uint8_t *) ptr4, sizeof(local_ciphertext));
-    zmq_send(socket, local_ciphertext, sizeof(local_ciphertext), 0);
-
-    printf("recieving ciphertext from remote...\n"); 
-    zmq_recv(socket, remote_ciphertext, sizeof(remote_ciphertext), 0);
-    memcpy(ptr3, remote_ciphertext, sizeof(remote_ciphertext));
-
-    printf("<<<<<<<<<<<<<< sir_entry() >>>>>>>>>>>>>>>>>\n");
-    sir_entry();
-
-    printf("answer: %s\n", ptr4 + sizeof(local_ciphertext));
-
-
-    zsocket_destroy(ctx, socket);
+    zsocket_destroy(ctx, outbound_socket);
+    zsocket_destroy(ctx, inbound_socket);
     zctx_destroy(&ctx);
-
 }
+

@@ -2,6 +2,7 @@
 #define SIR_CHANNEL_H
 
 #include <stdint.h>
+#include "../common/message.h"
 
 typedef enum {
   CHANNEL_SUCCESS = 0, 
@@ -64,10 +65,10 @@ channel_api_result_t sir_send(uint8_t *buf, uint64_t size);
 channel_api_result_t sir_recv(uint8_t *buf, uint64_t size);
 
 /* channel_send is an internal API, and is used by DHM and sir_send */
-channel_api_result_t channel_send(uint8_t *buf, uint64_t size);
+channel_api_result_t channel_send(message_type_t type, uint8_t *buf, uint64_t size);
 
 /* channel_recv is an internal API, and is used by DHM and sir_recv */
-channel_api_result_t channel_recv(uint8_t *buf, uint64_t size);
+channel_api_result_t channel_recv(message_type_t type, uint8_t *buf, uint64_t size);
 
 
 #endif /* SIR_CHANNEL_H */
