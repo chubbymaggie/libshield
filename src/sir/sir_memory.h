@@ -9,7 +9,7 @@ typedef union header {
     uint64_t size;     /* size of this block */
   } s;
   align_t x;           /* to force alignment of blocks */
-} Header;
+} malloc_header_t;
 
 typedef struct {
   uint8_t *heap_buf_start;
