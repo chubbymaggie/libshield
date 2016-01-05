@@ -2,27 +2,8 @@
 #include <stddef.h>
 #include "sir_memory.h"
 
-typedef uint64_t align_t;
-
-union header {
-  struct {
-    union header *ptr; /* next block if on free list */
-    uint64_t size;     /* size of this block */
-  } s;
-  align_t x;           /* to force alignment of blocks */
-};
-
-typedef union header Header;
-
 static Header base;    /* empty list before init */
 static Header *freep = NULL; /* start of free list */
-
-typedef struct {
-  uint8_t *heap_buf_start;
-  uint64_t heap_buf_size;
-  uint8_t *heap_buf_current;
-} sir_memory_context_t;
-
 static sir_memory_context_t sir_memory_context;
 
 void init_memory(uint8_t* heap_buf,
