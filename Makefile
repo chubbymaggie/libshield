@@ -9,7 +9,8 @@ shared:
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/sir_dhm.c -Isrc/sir/crypto/include -o bin/sir_dhm.o
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/sir_aes_gcm.c -Isrc/sir/crypto/include -o bin/sir_aes_gcm.o
 	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/sir_channel.c -o bin/sir_channel.o
-	@cc -O2 -shared -fPIC -Wl,-soname,libsir.so -o bin/libsir.so bin/platform.o bin/libmem.o bin/sir_dhm.o bin/sir_aes_gcm.o bin/sir_channel.o bin/sir_main.o bin/div.o -nostdlib -Lsrc/sir/crypto/library/ -lmbedcrypto -Lsrc/sir/rand -ldrng
+	@cc -O2 -c -Wall -W -Wdeclaration-after-statement -fPIC -fno-stack-protector -nostdlib src/sir/sir_memory.c -o bin/sir_memory.o
+	@cc -O2 -shared -fPIC -Wl,-soname,libsir.so -o bin/libsir.so bin/platform.o bin/libmem.o bin/sir_dhm.o bin/sir_aes_gcm.o bin/sir_memory.o bin/sir_channel.o bin/sir_main.o bin/div.o -nostdlib -Lsrc/sir/crypto/library/ -lmbedcrypto -Lsrc/sir/rand -ldrng
 	@cc src/host_app/host_app_server.c -ldl -lzmq -lczmq -o bin/host_server_app
 	@cc src/host_app/host_app_client.c -ldl -lzmq -lczmq -o bin/host_client_app
 	@echo "Build completed successfully and produced app and libsir.so"
