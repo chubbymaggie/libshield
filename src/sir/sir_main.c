@@ -6,6 +6,7 @@
 #include "sir_dhm.h"
 #include "sir_aes_gcm.h"
 #include "sir_channel.h"
+#include "sir_memory.h"
 #include "../common/message.h"
 
 #define CHECK_SEND( TEST )   if( TEST == CHANNEL_FAILURE) { exit(1); }
@@ -25,9 +26,9 @@ void U_main()
   CHECK_SEND( sir_send((uint8_t *) passphrase, strlen(passphrase) + 1) );
   CHECK_RECV( sir_recv(cleartext, strlen(passphrase) + 1) );
   CHECK_SEND( channel_send(PRINT_DEBUG_MESSAGE, cleartext, strlen(passphrase) + 1) );
-  CHECK_MALLOC( p = sir_malloc(sizeof(int)) );
-  *p = (int) 42; 
-  //CHECK_SEND( channel_send(PRINT_DEBUG_MESSAGE, p, sizeof(p)) );
+  p = sir_malloc(sizeof(int));
+  if (p == NULL) { exit(1); }
+  *p = 42; 
   sir_free(p);
   CHECK_SEND( channel_send(EXIT_MESSAGE, NULL, 0) );
 }

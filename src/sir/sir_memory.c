@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
+#include "sir_memory.h"
 
 typedef uint64_t align_t;
 
@@ -35,12 +36,17 @@ void init_memory(uint8_t* heap_buf,
 Header *morecore(uint64_t nunits)
 {
   uint64_t nbytes = nunits * sizeof(Header);
+  Header *result;
+
   if ((sir_memory_context.heap_buf_start + 
        sir_memory_context.heap_buf_size -
        sir_memory_context.heap_buf_current) >= nbytes) 
   {
+    result = (Header *) sir_memory_context.heap_buf_current;
+    result->s.size = nunits;
+    sir_free((void *) (result + 1));
     sir_memory_context.heap_buf_current += nbytes;
-    return ((Header *) (sir_memory_context.heap_buf_current - nbytes));
+    return freep;
   } else {
     return NULL;
   }
@@ -82,7 +88,7 @@ void sir_free(void *ap)
 {
   Header *bp, *p;
   
-  bp = (Header *) ap - 1;
+  bp = (Header *)ap - 1;
   for (p = freep; !(bp > p && bp < p->s.ptr); p = p->s.ptr)
   {
     if (p >= p->s.ptr && (bp > p || bp < p->s.ptr)) 
