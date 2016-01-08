@@ -105,8 +105,6 @@ procedure {:inline 1} channel_send( msg_typ: uint64_t,
                         msg_buf: uint8_ptr_t,
                         msg_size: uint64_t )
 returns (result: channel_api_result_t)
-requires AddrInSendBuf(get_send_buf_current(mem));
-ensures  AddrInSendBuf(get_send_buf_current(mem));
 modifies mem;
 {
   var msg_header: sir_message_header_t; //ghost_var
@@ -189,8 +187,6 @@ modifies mem;
     result := channel_failure;
     return;
   }
-  assume LE_64(msg_size, 128bv64); //TODO: why do we need this
-  assume AddrInU(msg_buf);
 
   // if (sir_channel_context.symmetric_key == NULL) {
   //   return channel_send(SEND_MESSAGE, buf, size);
@@ -201,13 +197,9 @@ modifies mem;
     return;
   }
 
-  assert LOAD_LE_64(mem, PLUS_64(static_sir_channel_context_base_ptr, 64bv64)) ==
-         LOAD_LE_64(old(mem), PLUS_64(static_sir_channel_context_base_ptr, 64bv64));
-
   // memset(buf_128_bytes, 0x00, sizeof(buf_128_bytes));
   call memset(buf_128_bytes_ptr, 0bv8, 128bv64);
   // memcpy(buf_128_bytes, buf, size);
-  assume LE_64(msg_size, 128bv64); //TODO: why do we need this
   call memcpy(buf_128_bytes_ptr, msg_buf, msg_size);
 
   //rng_result = rdrand_get_bytes(16, ciphertext + 128);
