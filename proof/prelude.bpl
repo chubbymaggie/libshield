@@ -143,7 +143,7 @@ modifies mem;
 {
   var new_mem: mem_t;
 
-  assert (LE_64(src, PLUS_64(src,size)) &&  LE_64(dst, PLUS_64(dst,size)));
+  //assert (LE_64(src, PLUS_64(src,size)) &&  LE_64(dst, PLUS_64(dst,size)));
 
   assume (forall i : virtual_addr_t ::
     ((LT_64(i, dst) || GE_64(i, PLUS_64(dst,size))) ==>
@@ -151,6 +151,22 @@ modifies mem;
   assume (forall i : virtual_addr_t ::
     ((GE_64(i, dst) && LT_64(i, PLUS_64(dst,size))) ==>
     (new_mem[i] == mem[PLUS_64(src,MINUS_64(i,dst))])));
+  mem := new_mem;
+}
+
+procedure {:inline 1} memset(ptr: uint8_ptr_t, val: uint8_t, size: uint64_t)
+modifies mem;
+{
+  var new_mem: mem_t;
+
+  //assert LE_64(ptr, PLUS_64(ptr,size));
+
+  assume (forall i : virtual_addr_t ::
+    ((LT_64(i, ptr) || GE_64(i, PLUS_64(ptr,size))) ==>
+    (new_mem[i] == mem[i])));
+  assume (forall i : virtual_addr_t ::
+    ((GE_64(i, ptr) && LT_64(i, PLUS_64(ptr,size))) ==>
+    (new_mem[i] == val)));
   mem := new_mem;
 }
 

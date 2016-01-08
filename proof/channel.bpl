@@ -102,9 +102,11 @@ returns (result: bool)
 }
 
 procedure {:inline 1} channel_send( msg_typ: uint64_t,
-                                    msg_buf: uint8_ptr_t,
-                                    msg_size: uint64_t )
+                        msg_buf: uint8_ptr_t,
+                        msg_size: uint64_t )
 returns (result: channel_api_result_t)
+requires AddrInSendBuf(get_send_buf_current(mem));
+ensures  AddrInSendBuf(get_send_buf_current(mem));
 modifies mem;
 {
   var msg_header: sir_message_header_t; //ghost_var
@@ -155,34 +157,75 @@ modifies mem;
 }
 
 procedure L_send( msg_buf: uint8_ptr_t, msg_size: uint64_t )
-//returns (result: channel_api_result_t)
+returns (result: channel_api_result_t)
+requires AddrInSendBuf(get_send_buf_current(mem));
+ensures  AddrInSendBuf(get_send_buf_current(mem));
 modifies mem;
 {
+  var symmetric_key_ptr:  uint8_ptr_t; //ghost var
+
+  var buf_128_bytes_ptr: uint8_ptr_t;
+  var ciphertext_ptr: uint8_ptr_t;
   var rsp: bv64;
-  var symmetric_key: uint8_ptr_t;
-  var result: channel_api_result_t;
 
   //rsp is arbitrary at the time of call.
   havoc rsp; assume AddrInStack(rsp);
+  //uint8_t buf_128_bytes[128]; resides on the stack
+  buf_128_bytes_ptr := rsp;
+  //uint8_t ciphertext[160]; resides on the stack
+  ciphertext_ptr := MINUS_64(rsp, 128bv64);
 
-  if (GT_64(msg_size, 128bv64)) {
-    //result := channel_failure;
+  //TODO: fix this in the code
+  if (! (AddrInU(msg_buf) &&
+         AddrInU(PLUS_64(msg_buf,msg_size)) &&
+         LE_64(msg_buf, PLUS_64(msg_buf,msg_size))) )
+  {
+    result := channel_failure;
     return;
   }
 
-  symmetric_key := LOAD_LE_64(mem, PLUS_64(static_sir_channel_context_base_ptr, 64bv64));
-  if (symmetric_key == NULL) {
+  //    if (size > 128) { return CHANNEL_FAILURE; }
+  if (GT_64(msg_size, 128bv64)) {
+    result := channel_failure;
+    return;
+  }
+  assume LE_64(msg_size, 128bv64); //TODO: why do we need this
+  assume AddrInU(msg_buf);
+
+  // if (sir_channel_context.symmetric_key == NULL) {
+  //   return channel_send(SEND_MESSAGE, buf, size);
+  // }
+  symmetric_key_ptr := LOAD_LE_64(mem, PLUS_64(static_sir_channel_context_base_ptr, 64bv64));
+  if (symmetric_key_ptr == NULL) {
     call result := channel_send(0bv64, msg_buf, msg_size);
     return;
   }
 
-  //result := channel_success;
+  assert LOAD_LE_64(mem, PLUS_64(static_sir_channel_context_base_ptr, 64bv64)) ==
+         LOAD_LE_64(old(mem), PLUS_64(static_sir_channel_context_base_ptr, 64bv64));
+
+  // memset(buf_128_bytes, 0x00, sizeof(buf_128_bytes));
+  call memset(buf_128_bytes_ptr, 0bv8, 128bv64);
+  // memcpy(buf_128_bytes, buf, size);
+  assume LE_64(msg_size, 128bv64); //TODO: why do we need this
+  call memcpy(buf_128_bytes_ptr, msg_buf, msg_size);
+
+  //rng_result = rdrand_get_bytes(16, ciphertext + 128);
+  //if (rng_result != DRNG_SUCCESS) { exit(1); }
+  call havoc_region(PLUS_64(ciphertext_ptr, 128bv64), 16bv64);
+
+  //aes_result = aes_gcm_encrypt_and_tag(..)
+  call havoc_region(ciphertext_ptr, 160bv64);
+
+  //send_result = channel_send(SEND_ENCRYPTED_MESSAGE, ciphertext, 160);
+  call result := channel_send(0bv64, ciphertext_ptr, 160bv64);
+
   return;
 }
 
 procedure L_recv( msg_buf: uint8_ptr_t, msg_size: uint64_t )
-//returns (result: channel_api_result_t)
+returns (result: channel_api_result_t)
 modifies mem;
 {
-
+  result := channel_failure;
 }

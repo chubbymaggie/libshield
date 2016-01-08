@@ -1,5 +1,5 @@
 procedure U( )
-modifies mem;
+//modifies mem;
 {
 
 }
