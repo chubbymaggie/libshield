@@ -120,10 +120,11 @@ procedure {:inline 1} channel_send( msg_typ : uint64_t,
                                     msg_buf : uint8_ptr_t,
                                     msg_size: uint64_t )
 returns (result: channel_api_result_t)
-requires AddrInSendBuf(LOAD_LE_64(sir_channel_context,
-                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
-ensures AddrInSendBuf(LOAD_LE_64(sir_channel_context,
-                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
+//requires LE_64(msg_size, 160bv64);
+//requires AddrInSendBuf(LOAD_LE_64(sir_channel_context,
+//                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
+//ensures AddrInSendBuf(LOAD_LE_64(sir_channel_context,
+//                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
 
 modifies send_buf, stack, sir_channel_context;
 {
@@ -162,14 +163,9 @@ modifies send_buf, stack, sir_channel_context;
 
   msg_header := sir_message_header_t(msg_typ, msg_size);
 
-  assume LE_64(msg_size, 128bv64);
-  assume AddrInSendBuf(send_buf_current) &&
-         AddrInSendBuf(PLUS_64(send_buf_current, 15bv64)) &&
-         LE_64(send_buf_current, PLUS_64(send_buf_current, 15bv64));
   assume AddrInSendBuf(send_buf_current) &&
          AddrInSendBuf(PLUS_64(send_buf_current, PLUS_64(msg_size,15bv64))) &&
          LE_64(send_buf_current, PLUS_64(send_buf_current, PLUS_64(msg_size,15bv64)));
-  //assert AddrInSendBuf(PLUS_64(PLUS_64(send_buf_current, 15bv64), msg_size));
 
   //memcpy(sir_channel_context.send_buf_current, &msg_header, sizeof(msg_header));
   call write_message_header(send_buf_current, msg_header);
@@ -182,6 +178,7 @@ modifies send_buf, stack, sir_channel_context;
   assume AddrInSendBuf(send_buf_current) &&
          AddrInSendBuf(PLUS_64(send_buf_current, MINUS_64(msg_size,1bv64))) &&
          LE_64(send_buf_current, PLUS_64(send_buf_current, MINUS_64(msg_size,1bv64)));
+
   //memcpy(sir_channel_context.send_buf_current, buf, size);
   call send_buf_memcpy(send_buf_current, msg_buf, msg_size);
   //sir_channel_context.send_buf_current += size;
@@ -190,6 +187,7 @@ modifies send_buf, stack, sir_channel_context;
   {
     send_buf_current := send_buf_ptr_low;
   }
+
   sir_channel_context := STORE_LE_64(sir_channel_context,
                                      PLUS_64(sir_channel_context_ptr_low, 16bv64),
                                      send_buf_current); //sizeof(msg_header_t)
