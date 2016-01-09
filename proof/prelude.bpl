@@ -138,47 +138,66 @@ function {:inline} ITE_32(b : bool, x : bv32, y : bv32) : bv32 { if (b) then x e
 function {:inline} ITE_64(b : bool, x : bv64, y : bv64) : bv64 { if (b) then x else y }
 function {:inline} ITE_128(b : bool, x : bv128, y : bv128) : bv128 { if (b) then x else y }
 
-procedure {:inline 1} memcpy(dst: uint8_ptr_t, src: uint8_ptr_t, size: uint64_t)
-modifies mem;
+procedure {:inline 1} send_buf_memcpy(dst: uint8_ptr_t, src: uint8_ptr_t, size: uint64_t)
+modifies send_buf;
 {
-  var new_mem: mem_t;
+  assert LE_64(dst, PLUS_64(dst, size)) &&
+         AddrInSendBuf(dst) &&
+         AddrInSendBuf(PLUS_64(dst,MINUS_64(size, 1bv64)));
+  call send_buf := memcpy(send_buf, dst, src, size);
+}
 
-  //assert (LE_64(src, PLUS_64(src,size)) &&  LE_64(dst, PLUS_64(dst,size)));
+procedure {:inline 1} stack_memcpy(dst: uint8_ptr_t, src: uint8_ptr_t, size: uint64_t)
+modifies stack;
+{
+  assert LE_64(dst, PLUS_64(dst,size)) &&
+         (AddrInStack(dst) || AddrInStackGuard(dst)) &&
+         (AddrInStack(PLUS_64(dst,MINUS_64(size, 1bv64))) || AddrInStackGuard(PLUS_64(dst,MINUS_64(size, 1bv64))));
+  call stack := memcpy(stack, dst, src, size);
+}
 
+procedure {:inline 1} memcpy(m: mem_t, dst: uint8_ptr_t, src: uint8_ptr_t, size: uint64_t)
+returns (result: mem_t)
+{
   assume (forall i : virtual_addr_t ::
     ((LT_64(i, dst) || GE_64(i, PLUS_64(dst,size))) ==>
-    (new_mem[i] == mem[i])));
+    (result[i] == m[i])));
   assume (forall i : virtual_addr_t ::
     ((GE_64(i, dst) && LT_64(i, PLUS_64(dst,size))) ==>
-    (new_mem[i] == mem[PLUS_64(src,MINUS_64(i,dst))])));
-  mem := new_mem;
+    (result[i] == m[PLUS_64(src,MINUS_64(i,dst))])));
 }
 
-procedure {:inline 1} memset(ptr: uint8_ptr_t, val: uint8_t, size: uint64_t)
-modifies mem;
+procedure {:inline 1} stack_memset(ptr: uint8_ptr_t, val: uint8_t, size: uint64_t)
+modifies stack;
 {
-  var new_mem: mem_t;
+  assert LE_64(ptr, PLUS_64(ptr,size)) &&
+         (AddrInStack(ptr) || AddrInStackGuard(ptr)) &&
+         (AddrInStack(PLUS_64(ptr,MINUS_64(size, 1bv64))) || AddrInStackGuard(PLUS_64(ptr,MINUS_64(size, 1bv64))));
+  call stack := memset(stack, ptr, val, size);
+}
 
-  //assert LE_64(ptr, PLUS_64(ptr,size));
-
+procedure {:inline 1} memset(m: mem_t, ptr: uint8_ptr_t, val: uint8_t, size: uint64_t)
+returns (result: mem_t)
+{
   assume (forall i : virtual_addr_t ::
     ((LT_64(i, ptr) || GE_64(i, PLUS_64(ptr,size))) ==>
-    (new_mem[i] == mem[i])));
+    (result[i] == m[i])));
   assume (forall i : virtual_addr_t ::
     ((GE_64(i, ptr) && LT_64(i, PLUS_64(ptr,size))) ==>
-    (new_mem[i] == val)));
-  mem := new_mem;
+    (result[i] == val)));
 }
 
-procedure {:inline 1} havoc_region(ptr: uint8_ptr_t, size: uint64_t)
-modifies mem;
+procedure {:inline 1} havoc_stack_region(ptr: uint8_ptr_t, size: uint64_t)
+modifies stack;
 {
-  var old_mem: mem_t;
+  var old_stack: mem_t;
 
-  assert LE_64(ptr, PLUS_64(ptr,size));
-  old_mem := mem;
-  havoc mem;
+  assert LE_64(ptr, PLUS_64(ptr,size)) &&
+         (AddrInStack(ptr) || AddrInStackGuard(ptr)) &&
+         (AddrInStack(PLUS_64(ptr,MINUS_64(size, 1bv64))) || AddrInStackGuard(PLUS_64(ptr,MINUS_64(size, 1bv64))));
+  old_stack := stack;
+  havoc stack;
   assume (forall i : virtual_addr_t ::
     ((LT_64(i, ptr) || GE_64(i, PLUS_64(ptr,size))) ==>
-    (old_mem[i] == mem[i])));
+    (old_stack[i] == stack[i])));
 }
