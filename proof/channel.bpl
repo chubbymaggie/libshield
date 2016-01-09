@@ -155,8 +155,6 @@ modifies send_buf, stack, sir_channel_context;
   //  }
   call space_available := bytes_available_in_send_buf(PLUS_64(msg_size, 16bv64));
   if (!space_available) {
-    assume false;
-    assume AddrInSendBuf(send_buf_current);
     result := channel_failure; return;
   }
 
