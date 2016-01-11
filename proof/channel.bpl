@@ -100,6 +100,12 @@ modifies sir_channel_context;
 
 procedure {:inline 1} bytes_available_in_send_buf (size: uint64_t)
 returns (result: bool)
+requires AddrInSendBuf(LOAD_LE_64(sir_channel_context,
+                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
+//requires LOAD_LE_64(sir_channel_context,
+//                    PLUS_64(sir_channel_context_ptr_low, 8bv64)) == send_buf_size;
+//requires LOAD_LE_64(sir_channel_context,
+//                    PLUS_64(sir_channel_context_ptr_low, 0bv64)) == send_buf_ptr_low;
 {
   var send_buf_current: uint8_ptr_t;
   var send_buf_size: uint8_ptr_t;
@@ -114,15 +120,18 @@ returns (result: bool)
 
   result := LE_64(PLUS_64(send_buf_current, size), PLUS_64(send_buf_start, send_buf_size)) &&
             GE_64(PLUS_64(send_buf_current, size), send_buf_current);
+  assert result ==>
+         (AddrInSendBuf(send_buf_current) &&
+          AddrInSendBuf(PLUS_64(send_buf_current, MINUS_64(size,1bv64))));
 }
 
 procedure {:inline 1} channel_send( msg_typ : uint64_t,
                                     msg_buf : uint8_ptr_t,
                                     msg_size: uint64_t )
 returns (result: channel_api_result_t)
-//requires LE_64(msg_size, 160bv64);
-//requires AddrInSendBuf(LOAD_LE_64(sir_channel_context,
-//                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
+requires LE_64(msg_size, 160bv64);
+requires AddrInSendBuf(LOAD_LE_64(sir_channel_context,
+                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
 //ensures AddrInSendBuf(LOAD_LE_64(sir_channel_context,
 //                                  PLUS_64(sir_channel_context_ptr_low, 16bv64)));
 
@@ -163,7 +172,7 @@ modifies send_buf, stack, sir_channel_context;
 
   assume AddrInSendBuf(send_buf_current) &&
          AddrInSendBuf(PLUS_64(send_buf_current, PLUS_64(msg_size,15bv64))) &&
-         LE_64(send_buf_current, PLUS_64(send_buf_current, PLUS_64(msg_size,15bv64)));
+         LE_64(send_buf_current, PLUS_64(send_buf_current, PLUS_64(msg_size,16bv64)));
 
   //memcpy(sir_channel_context.send_buf_current, &msg_header, sizeof(msg_header));
   call write_message_header(send_buf_current, msg_header);
@@ -200,7 +209,15 @@ modifies send_buf, stack, sir_channel_context;
 procedure L_send( msg_buf: uint8_ptr_t, msg_size: uint64_t )
 returns (result: channel_api_result_t)
 requires AddrInSendBuf(LOAD_LE_64(sir_channel_context, PLUS_64(sir_channel_context_ptr_low, 16bv64)));
+requires LOAD_LE_64(sir_channel_context,
+                     PLUS_64(sir_channel_context_ptr_low, 8bv64)) == send_buf_size;
+requires LOAD_LE_64(sir_channel_context,
+                     PLUS_64(sir_channel_context_ptr_low, 0bv64)) == send_buf_ptr_low;
 ensures  AddrInSendBuf(LOAD_LE_64(sir_channel_context, PLUS_64(sir_channel_context_ptr_low, 16bv64)));
+ensures LOAD_LE_64(sir_channel_context,
+                     PLUS_64(sir_channel_context_ptr_low, 8bv64)) == send_buf_size;
+ensures LOAD_LE_64(sir_channel_context,
+                     PLUS_64(sir_channel_context_ptr_low, 0bv64)) == send_buf_ptr_low;
 modifies send_buf, stack, sir_channel_context;
 {
   var symmetric_key_ptr:  uint8_ptr_t; //ghost var

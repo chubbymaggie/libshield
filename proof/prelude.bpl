@@ -105,6 +105,7 @@ type uint16_t = bv16;
 type uint32_t = bv32;
 type uint64_t = bv64;
 //type virtual_addr_of_header_t = virtual_addr_t;
+type header_ptr_t = virtual_addr_t;
 
 function {:inline} STORE_LE_8(mem : mem_t, addr : virtual_addr_t, value : bv8) : mem_t
   { mem[addr := value] }

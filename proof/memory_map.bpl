@@ -21,6 +21,10 @@ const U_ptr_high : uint8_ptr_t;       axiom U_ptr_high == 409600bv64;
 function {:inline} AddrInU(ptr: bv64): bool { GE_64(ptr, U_ptr_low) && LT_64(ptr, U_ptr_high) }
 
 /*************** lot of empty space ****************/
+var sir_heap_context: mem_t; //40960bv64 to 41016bv64
+const sir_heap_context_ptr_low : uint8_ptr_t;  axiom sir_heap_context_ptr_low == 49152bv64;
+const sir_heap_context_ptr_high : uint8_ptr_t; axiom sir_heap_context_ptr_high == 49176bv64;
+
 
 var symmetric_key: mem_t; //from 45056bv64 to 45088bv64
 const symmetric_key_ptr_low: uint8_ptr_t;                axiom symmetric_key_ptr_low == 45056bv64;
@@ -31,6 +35,16 @@ const sir_channel_context_ptr_low : uint8_ptr_t;  axiom sir_channel_context_ptr_
 const sir_channel_context_ptr_high : uint8_ptr_t; axiom sir_channel_context_ptr_high == 41016bv64;
 
 /*************** lot of empty space ****************/
+var heap_base: mem_t;
+const heap_base_ptr_low: uint8_ptr_t;        axiom heap_ptr_low == 16384bv64;
+const heap_base_ptr_high: uint8_ptr_t;       axiom heap_ptr_high == 16400bv64;
+
+var freep: header_ptr_t; //TODO: put this in memory
+
+var heap: mem_t; //from 12288bv64 to 16384bv64
+const heap_ptr_low: uint8_ptr_t;        axiom heap_ptr_low == 12288bv64;
+const heap_ptr_high: uint8_ptr_t;       axiom heap_ptr_high == 16384bv64;
+function {:inline} AddrInHeap(x: bv64): bool { GE_64(x, heap_ptr_low) && LT_64(x, heap_ptr_high) }
 
 var stack: mem_t; //from 8192bv64 to 12288bv64
 const stack_ptr_low: uint8_ptr_t;        axiom stack_ptr_low == 8192bv64;
