@@ -60,8 +60,8 @@ modifies sir_heap_context, freep;
 
 procedure {:inline 1} bytes_available_in_heap_buf (size: uint64_t)
 returns (result: bool)
-requires AddrInHeap(LOAD_LE_64(sir_heap_context,
-                               PLUS_64(sir_heap_context_ptr_low, 16bv64)));
+requires GT_64(size, 0bv64);
+requires AddrInHeapInclusive(LOAD_LE_64(sir_heap_context, PLUS_64(sir_heap_context_ptr_low, 16bv64)));
 {
   var heap_buf_current: uint8_ptr_t;
   var heap_buf_size: uint8_ptr_t;
@@ -74,16 +74,29 @@ requires AddrInHeap(LOAD_LE_64(sir_heap_context,
   heap_buf_current := LOAD_LE_64(sir_heap_context,
                                  PLUS_64(sir_heap_context_ptr_low, 16bv64));
 
-  result := LE_64(PLUS_64(heap_buf_current, size), PLUS_64(heap_buf_start, heap_buf_size)) &&
+  assert GT_64(size, 0bv64);
+  result := LE_64(PLUS_64(heap_buf_current, size), PLUS_64(heap_ptr_low, heap_buf_size)) &&
             GE_64(PLUS_64(heap_buf_current, size), heap_buf_current);
+
+  //result := LE_64(PLUS_64(heap_buf_current, size), heap_ptr_high) &&
+  //          GE_64(PLUS_64(heap_buf_current, size), heap_buf_current);
+
   assert result ==>
-         (AddrInHeap(heap_buf_current) &&
-          AddrInHeap(PLUS_64(heap_buf_current, MINUS_64(size,1bv64))));
+         (AddrInHeapInclusive(heap_buf_current) &&
+          AddrInHeapInclusive(PLUS_64(heap_buf_current, MINUS_64(size,1bv64))));
 }
 
 procedure {:inline 1} morecore( nunits: uint64_t )
 returns (result: header_ptr_t)
 modifies heap, sir_heap_context, freep;
+requires LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
+requires LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
+ensures LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
+ensures LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
 {
   var nbytes: uint64_t;
   var heap_buf_current: uint8_ptr_t;
@@ -93,21 +106,32 @@ modifies heap, sir_heap_context, freep;
   heap_buf_current := LOAD_LE_64(sir_heap_context,
                                  PLUS_64(sir_heap_context_ptr_low, 16bv64));
   nbytes := LSHIFT_64(nunits, 4bv64);
+
   call bytes_available := bytes_available_in_heap_buf( nbytes );
   if (bytes_available)
   {
     result := heap_buf_current;
     heap := STORE_LE_64(heap, PLUS_64(result, 8bv64), nunits);
-    call free_api_result := L_free(PLUS_64(result, 8bv64));
+    //call free_api_result := L_free(PLUS_64(result, 8bv64)); //TODO uncomment
     sir_heap_context := STORE_LE_64(sir_heap_context,
                                     PLUS_64(sir_heap_context_ptr_low, 16bv64),
-                                    nbytes);
+                                    PLUS_64(nbytes, heap_buf_current));
   }
   else { result := NULL; return; }
 }
 
 procedure L_malloc( size: uint64_t )
 returns (result: heap_api_result_t, region: virtual_addr_t)
+requires AddrInHeapInclusive(LOAD_LE_64(sir_heap_context, PLUS_64(sir_heap_context_ptr_low, 16bv64)));
+requires LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
+requires LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
+ensures AddrInHeapInclusive(LOAD_LE_64(sir_heap_context, PLUS_64(sir_heap_context_ptr_low, 16bv64)));
+ensures LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
+ensures LOAD_LE_64(sir_heap_context,
+                    PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
 modifies heap, heap_base, freep, sir_heap_context;
 {
   var p, p_ptr: header_ptr_t;
@@ -116,7 +140,12 @@ modifies heap, heap_base, freep, sir_heap_context;
   var nunits: uint64_t;
   var p_size: uint64_t;
 
-  nunits := RSHIFT_64(nunits, 4bv64);
+  if (GT_64(size, heap_size)) { result := heap_failure; region := NULL; return; }
+  if (size == 0bv64) { result := heap_success; region := NULL; return; }
+
+  //uint64_t nunits = (nbytes + sizeof(malloc_header_t) - 1) / sizeof(malloc_header_t) + 1;
+  nunits := PLUS_64(RSHIFT_64(MINUS_64(PLUS_64(size, 16bv64), 1bv64), 4bv64), 1bv64);
+  assert GT_64(nunits, 0bv64);
 
   prevp := freep;
   if (prevp == NULL)
@@ -134,7 +163,13 @@ modifies heap, heap_base, freep, sir_heap_context;
   p := LOAD_LE_64(heap, PLUS_64(prevp,0bv64));
   return_flag := false;
 
-  while(!return_flag) {
+  while(!return_flag)
+  invariant AddrInHeapInclusive(LOAD_LE_64(sir_heap_context, PLUS_64(sir_heap_context_ptr_low, 16bv64)));
+  invariant LOAD_LE_64(sir_heap_context,
+                      PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
+  invariant LOAD_LE_64(sir_heap_context,
+                      PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
+  {
     p_ptr  := LOAD_LE_64(heap, PLUS_64(p, 0bv64)); //p->s.ptr
     p_size := LOAD_LE_64(heap, PLUS_64(p, 8bv64)); //p->s.size
     if (GE_64(p_size, nunits)) {
@@ -151,6 +186,7 @@ modifies heap, heap_base, freep, sir_heap_context;
       region := PLUS_64(p, 16bv64); result := heap_success;
       return_flag := true;
     }
+
     if (p == freep) {
       call p := morecore(nunits);
       if (p == NULL) {
@@ -163,7 +199,7 @@ modifies heap, heap_base, freep, sir_heap_context;
   }
   return;
 }
-
+/*
 procedure L_free( ap: uint8_ptr_t )
 returns (result: heap_api_result_t)
 modifies heap, freep;
@@ -178,6 +214,11 @@ modifies heap, freep;
   break_flag := false;
 
   while (!break_flag && !( GT_64(bp,p) && LT_64(bp, p_ptr) ))
+  //invariant AddrInHeapInclusive(LOAD_LE_64(sir_heap_context, PLUS_64(sir_heap_context_ptr_low, 16bv64)));
+  //invariant LOAD_LE_64(sir_heap_context,
+  //                    PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
+  //invariant LOAD_LE_64(sir_heap_context,
+  //                    PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
   {
     p_ptr := LOAD_LE_64(heap, PLUS_64(p, 0bv64)); //p->s.ptr
     if (GE_64(p,p_ptr) && (GT_64(bp,p) || LT_64(bp, p_ptr)))
@@ -221,3 +262,4 @@ modifies heap, freep;
 
   freep := p;
 }
+*/
