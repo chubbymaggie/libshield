@@ -19,42 +19,6 @@ type channel_api_result_t;
 const unique channel_success: channel_api_result_t;
 const unique channel_failure: channel_api_result_t;
 
-type{:datatype} sir_channel_context_t;
-function{:constructor} sir_channel_context_t( send_buf_start: uint8_ptr_t,
-                                              send_buf_size: uint64_t,
-                                              send_buf_current: uint8_ptr_t,
-                                              recv_buf_start: uint8_ptr_t,
-                                              recv_buf_size: uint64_t,
-                                              recv_buf_current: uint8_ptr_t,
-                                              symmetric_key: uint64_t ) :
-                       sir_channel_context_t;
-
-procedure {:inline 1} write_channel_context(ctx: sir_channel_context_t)
-modifies sir_channel_context;
-{
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 0bv64),
-                                     send_buf_start#sir_channel_context_t(ctx));
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 8bv64),
-                                     send_buf_size#sir_channel_context_t(ctx));
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 16bv64),
-                                     send_buf_current#sir_channel_context_t(ctx));
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 24bv64),
-                                     recv_buf_start#sir_channel_context_t(ctx));
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 32bv64),
-                                     recv_buf_size#sir_channel_context_t(ctx));
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 40bv64),
-                                     recv_buf_current#sir_channel_context_t(ctx));
-  sir_channel_context := STORE_LE_64(sir_channel_context,
-                                     PLUS_64(sir_channel_context_ptr_low, 48bv64),
-                                     symmetric_key#sir_channel_context_t(ctx));
-}
-
 /*
 typedef struct {
  uint64_t message_type;
@@ -87,15 +51,27 @@ procedure {:inline 1} init_channel( send_buf_start: uint8_ptr_t,
                                     symmetric_key: uint64_t )
 modifies sir_channel_context;
 {
-  var tmp: sir_channel_context_t;
-  tmp  :=  sir_channel_context_t(send_buf_start,
-                                 send_buf_size,
-                                 send_buf_start,
-                                 recv_buf_start,
-                                 recv_buf_size,
-                                 recv_buf_start,
-                                 symmetric_key);
-  call write_channel_context(tmp);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 0bv64),
+                                     send_buf_start);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 8bv64),
+                                     send_buf_size);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 16bv64),
+                                     send_buf_start);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 24bv64),
+                                     recv_buf_start);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 32bv64),
+                                     recv_buf_size);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 40bv64),
+                                     recv_buf_start);
+  sir_channel_context := STORE_LE_64(sir_channel_context,
+                                     PLUS_64(sir_channel_context_ptr_low, 48bv64),
+                                     symmetric_key);
 }
 
 procedure {:inline 1} bytes_available_in_send_buf (size: uint64_t)

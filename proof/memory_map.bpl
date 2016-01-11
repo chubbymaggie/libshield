@@ -36,8 +36,8 @@ const sir_channel_context_ptr_high : uint8_ptr_t; axiom sir_channel_context_ptr_
 
 /*************** lot of empty space ****************/
 var heap_base: mem_t;
-const heap_base_ptr_low: uint8_ptr_t;        axiom heap_base_ptr_low == 16384bv64;
-const heap_base_ptr_high: uint8_ptr_t;       axiom heap_base_ptr_high == 16400bv64;
+const heap_base_ptr_low: uint8_ptr_t;        axiom heap_base_ptr_low == 12288bv64;
+const heap_base_ptr_high: uint8_ptr_t;       axiom heap_base_ptr_high == 12304bv64;
 
 var freep: header_ptr_t; //TODO: put this in memory
 

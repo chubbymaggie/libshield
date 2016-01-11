@@ -15,46 +15,26 @@ typedef struct {
 } sir_memory_context_t;
 */
 
-type{:datatype} sir_heap_context_t;
-function{:constructor} sir_heap_context_t( heap_buf_start: uint8_ptr_t,
-                                           heap_buf_size: uint64_t,
-                                           heap_buf_current: uint8_ptr_t ) :
-                       sir_heap_context_t;
-
 /*
 typedef struct header {
     struct header *ptr; // next block if on free list
     uint64_t size;      // size of this block
 } malloc_header_t;
 */
-type{:datatype} malloc_header_t;
-function{:constructor} malloc_header_t( ptr : header_ptr_t,
-                                        size: uint64_t ) :
-                       malloc_header_t;
-
-procedure {:inline 1} write_heap_context(ctx: sir_heap_context_t)
-modifies sir_heap_context;
-{
-  sir_heap_context := STORE_LE_64(sir_heap_context,
-                                    PLUS_64(sir_heap_context_ptr_low, 0bv64),
-                                    heap_buf_start#sir_heap_context_t(ctx));
-  sir_heap_context := STORE_LE_64(sir_heap_context,
-                                    PLUS_64(sir_heap_context_ptr_low, 8bv64),
-                                    heap_buf_size#sir_heap_context_t(ctx));
-  sir_heap_context := STORE_LE_64(sir_heap_context,
-                                    PLUS_64(sir_heap_context_ptr_low, 16bv64),
-                                    heap_buf_current#sir_heap_context_t(ctx));
-}
 
 procedure {:inline 1} init_heap ( heap_buf_start: uint8_ptr_t,
                                   heap_buf_size: uint64_t )
 modifies sir_heap_context, freep;
 {
-  var tmp: sir_heap_context_t;
-  tmp  :=  sir_heap_context_t ( heap_buf_start,
-                                heap_buf_size,
-                                heap_buf_start);
-  call write_heap_context(tmp);
+  sir_heap_context := STORE_LE_64(sir_heap_context,
+                                    PLUS_64(sir_heap_context_ptr_low, 0bv64),
+                                    heap_buf_start);
+  sir_heap_context := STORE_LE_64(sir_heap_context,
+                                    PLUS_64(sir_heap_context_ptr_low, 8bv64),
+                                    heap_buf_size);
+  sir_heap_context := STORE_LE_64(sir_heap_context,
+                                    PLUS_64(sir_heap_context_ptr_low, 16bv64),
+                                    PLUS_64(heap_buf_start, 16bv64));
   freep := NULL;
 }
 
@@ -111,6 +91,7 @@ ensures LOAD_LE_64(sir_heap_context,
   if (bytes_available)
   {
     result := heap_buf_current;
+    //assert AddrInHeap(PLUS_64(result, 8bv64));
     heap := STORE_LE_64(heap, PLUS_64(result, 8bv64), nunits);
     //call free_api_result := L_free(PLUS_64(result, 8bv64)); //TODO uncomment
     sir_heap_context := STORE_LE_64(sir_heap_context,
@@ -175,10 +156,13 @@ modifies heap, heap_base, freep, sir_heap_context;
     if (GE_64(p_size, nunits)) {
       if (p_size == nunits) {
         //prevp->s.ptr = p->s.ptr;
+        //assert AddrInHeap(PLUS_64(prevp, 0bv64));
         heap := STORE_LE_64(heap, PLUS_64(prevp, 0bv64), p_ptr);
       } else {
+        //assert AddrInHeap(PLUS_64(p, 8bv64));
         heap := STORE_LE_64(heap, PLUS_64(p, 8bv64), MINUS_64(p_size,nunits));
         p := PLUS_64(p, MINUS_64(p_size,nunits));
+        //assert AddrInHeap(PLUS_64(p, 8bv64));
         heap := STORE_LE_64(heap, PLUS_64(p, 8bv64), nunits);
       }
 
