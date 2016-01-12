@@ -24,7 +24,7 @@ modifies send_buf, recv_buf, stack, stack_guard, freep, sir_heap_context,
                       PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
   invariant LOAD_LE_64(sir_heap_context,
                       PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
-  invariant (freep != NULL) ==> AddrInHeap(freep);
+  invariant (freep != NULL) ==> AddrInFreeList(freep);
   {
     havoc buf;
     havoc size;

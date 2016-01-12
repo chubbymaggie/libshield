@@ -108,13 +108,13 @@ requires LOAD_LE_64(sir_heap_context,
                     PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
 requires LOAD_LE_64(sir_heap_context,
                     PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
-requires (freep != NULL) ==> AddrInHeap(freep);
+requires (freep != NULL) ==> AddrInFreeList(freep);
 ensures AddrInHeapInclusive(LOAD_LE_64(sir_heap_context, PLUS_64(sir_heap_context_ptr_low, 16bv64)));
 ensures LOAD_LE_64(sir_heap_context,
                     PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
 ensures LOAD_LE_64(sir_heap_context,
                     PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
-ensures (freep != NULL) ==> AddrInHeap(freep);
+ensures (freep != NULL) ==> AddrInFreeList(freep);
 modifies heap, freep, sir_heap_context;
 {
   var p, p_ptr: header_ptr_t;
@@ -130,15 +130,15 @@ modifies heap, freep, sir_heap_context;
   nunits := PLUS_64(RSHIFT_64(MINUS_64(PLUS_64(size, 16bv64), 1bv64), 4bv64), 1bv64);
   assert GT_64(nunits, 0bv64);
 
-  assert (freep != NULL) ==> AddrInHeap(freep);
+  assert (freep != NULL) ==> AddrInFreeList(freep);
   prevp := freep;
-  assert (prevp != NULL) ==> AddrInHeap(prevp);
+  assert (prevp != NULL) ==> AddrInFreeList(prevp);
 
   if (prevp == NULL)
   {
     prevp := heap_base_ptr_low;
     freep := prevp;
-    assert AddrInHeap(freep);
+    assert AddrInFreeList(freep);
     heap := STORE_LE_64(heap,
                              PLUS_64(heap_base_ptr_low, 0bv64),
                              freep);
@@ -149,7 +149,7 @@ modifies heap, freep, sir_heap_context;
 
   p := LOAD_LE_64(heap, PLUS_64(prevp,0bv64));
   //assume AddrInHeap(p);
-  if (!AddrInHeap(p)) { region := NULL; result := heap_failure; return; }
+  if (!AddrInFreeList(p)) { region := NULL; result := heap_failure; return; }
   return_flag := false;
 
   while(!return_flag)
@@ -158,13 +158,13 @@ modifies heap, freep, sir_heap_context;
                       PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
   invariant LOAD_LE_64(sir_heap_context,
                       PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
-  invariant AddrInHeap(freep);
-  invariant AddrInHeap(prevp);
-  invariant AddrInHeap(p);
+  invariant AddrInFreeList(freep);
+  invariant AddrInFreeList(prevp);
+  invariant AddrInFreeList(p);
   {
     p_ptr  := LOAD_LE_64(heap, PLUS_64(p, 0bv64)); //p->s.ptr
     //assume AddrInHeap(p_ptr);
-    if (!AddrInHeap(p_ptr)) { region := NULL; result := heap_failure; return; }
+    if (!AddrInFreeList(p_ptr)) { region := NULL; result := heap_failure; return; }
     p_size := LOAD_LE_64(heap, PLUS_64(p, 8bv64)); //p->s.size
     if (GE_64(p_size, nunits)) {
       if (p_size == nunits) {
@@ -172,7 +172,7 @@ modifies heap, freep, sir_heap_context;
         assert AddrInHeap(PLUS_64(prevp, 0bv64));
         heap := STORE_LE_64(heap, PLUS_64(prevp, 0bv64), p_ptr);
       } else {
-        //assert AddrInHeap(PLUS_64(p, 8bv64));
+        assert AddrInHeap(PLUS_64(p, 8bv64));
         heap := STORE_LE_64(heap, PLUS_64(p, 8bv64), MINUS_64(p_size,nunits));
         p := PLUS_64(p, MINUS_64(p_size,nunits));
         //assert AddrInHeap(PLUS_64(p, 8bv64));
@@ -192,7 +192,7 @@ modifies heap, freep, sir_heap_context;
       }
     }
     //assume AddrInHeap(p);
-    if (!AddrInHeap(p_ptr)) { region := NULL; result := heap_failure; return; }
+    if (!AddrInFreeList(p_ptr)) { region := NULL; result := heap_failure; return; }
     prevp := p;
     p := p_ptr;
   }
