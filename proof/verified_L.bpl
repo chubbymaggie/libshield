@@ -1,6 +1,6 @@
 procedure main()
 modifies send_buf, recv_buf, stack, stack_guard, freep, sir_heap_context,
-         sir_channel_context, symmetric_key, U, heap, heap_base;
+         sir_channel_context, symmetric_key, U, heap;
 {
   var buf: uint8_ptr_t;
   var size: uint64_t;
@@ -24,6 +24,7 @@ modifies send_buf, recv_buf, stack, stack_guard, freep, sir_heap_context,
                       PLUS_64(sir_heap_context_ptr_low, 8bv64)) == heap_size;
   invariant LOAD_LE_64(sir_heap_context,
                       PLUS_64(sir_heap_context_ptr_low, 0bv64)) == heap_ptr_low;
+  invariant (freep != NULL) ==> AddrInFreeList(freep);
   {
     havoc buf;
     havoc size;

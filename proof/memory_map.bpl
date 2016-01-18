@@ -35,7 +35,7 @@ const sir_channel_context_ptr_low : uint8_ptr_t;  axiom sir_channel_context_ptr_
 const sir_channel_context_ptr_high : uint8_ptr_t; axiom sir_channel_context_ptr_high == 41016bv64;
 
 /*************** lot of empty space ****************/
-var heap_base: mem_t;
+//var heap_base: mem_t;
 const heap_base_ptr_low: uint8_ptr_t;        axiom heap_base_ptr_low == 12288bv64;
 const heap_base_ptr_high: uint8_ptr_t;       axiom heap_base_ptr_high == 12304bv64;
 
@@ -45,8 +45,12 @@ var heap: mem_t; //from 12288bv64 to 16384bv64
 const heap_ptr_low: uint8_ptr_t;        axiom heap_ptr_low == 12288bv64;
 const heap_ptr_high: uint8_ptr_t;       axiom heap_ptr_high == 16384bv64;
 const heap_size: uint8_ptr_t;           axiom heap_size == 4096bv64;
-function {:inline} AddrInHeap(x: bv64): bool { GE_64(x, heap_ptr_low) && LT_64(x, heap_ptr_high) }
-function {:inline} AddrInHeapInclusive(x: bv64): bool { GE_64(x, heap_ptr_low) && LE_64(x, heap_ptr_high) }
+function {:inline} AddrInHeap(x: bv64): bool
+  { GE_64(x, heap_ptr_low) && LT_64(x, heap_ptr_high) }
+function {:inline} AddrInFreeList(x: bv64): bool
+  { GE_64(x, heap_ptr_low) && LE_64(x, MINUS_64(heap_ptr_high, 16bv64)) }
+function {:inline} AddrInHeapInclusive(x: bv64): bool
+  { GE_64(x, heap_ptr_low) && LE_64(x, heap_ptr_high) }
 
 var stack: mem_t; //from 8192bv64 to 12288bv64
 const stack_ptr_low: uint8_ptr_t;        axiom stack_ptr_low == 8192bv64;
