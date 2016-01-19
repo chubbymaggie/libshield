@@ -30,3 +30,6 @@ run:
 
 clean:
 	rm -r bin
+
+prove:
+	frama-c -wp -wp-invariants -wp-prover "why3:z3,alt-ergo" -wp-model "Typed,int,real" -main main -lib-entry -wp-par 8 -wp-timeout 10 -wp-out wp.out src/sir/string/libstring.c 
