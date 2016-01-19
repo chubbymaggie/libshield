@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include "sir_memory.h"
 
+#define NULL ((void *)0)
+
 static malloc_header_t base;    /* empty list before init */
 static malloc_header_t *freep = NULL; /* start of free list */
 static sir_memory_context_t sir_memory_context;

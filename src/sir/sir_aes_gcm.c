@@ -36,7 +36,7 @@ typedef UINT32 uint32_t;
 #endif /* defined(MBEDTLS_AES_C) */
 
 
-#include <string.h>
+#include "string/libstring.h"
 
 #if defined(MBEDTLS_PLATFORM_C)
 #include "mbedtls/platform.h"

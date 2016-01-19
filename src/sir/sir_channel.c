@@ -1,11 +1,12 @@
 #include <stdint.h>
-#include <string.h>
+#include "string/libstring.h"
 #include "platform.h"
 #include "sir_channel.h"
 #include "sir_aes_gcm.h"
 #include "rand/drng.h"
 #include "../common/message.h"
 
+#define NULL ((void *)0)
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
@@ -55,7 +56,7 @@ channel_api_result_t channel_send(message_type_t type, uint8_t *buf, uint64_t si
       return CHANNEL_FAILURE; 
     }
 
-    memcpy(sir_channel_context.send_buf_current, &msg_header, sizeof(msg_header)); 
+    memcpy(sir_channel_context.send_buf_current, (void *) &msg_header, sizeof(msg_header)); 
     sir_channel_context.send_buf_current += sizeof(msg_header);
 
     if (size > 0) {
@@ -76,7 +77,7 @@ channel_api_result_t channel_recv(message_type_t type, uint8_t *buf, uint64_t si
 
     msg_header.message_type = type;
     msg_header.message_size = size;
-    memcpy(sir_channel_context.send_buf_current, &msg_header, sizeof(msg_header)); 
+    memcpy(sir_channel_context.send_buf_current, (void *) &msg_header, sizeof(msg_header)); 
     sir_channel_context.send_buf_current += sizeof(msg_header);
 
     yield(); /* let the host get those bytes for us */

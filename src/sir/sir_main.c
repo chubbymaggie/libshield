@@ -1,4 +1,4 @@
-#include <string.h>
+#include "string/libstring.h"
 #include <stdint.h>
 #include "platform.h"
 #include "rand/drng.h"
@@ -9,6 +9,7 @@
 #include "sir_memory.h"
 #include "../common/message.h"
 
+#define NULL ((void *)0)
 #define CHECK_SEND( TEST )   if( TEST == CHANNEL_FAILURE) { exit(1); }
 #define CHECK_RECV( TEST )   if( TEST == CHANNEL_FAILURE) { exit(1); }
 #define CHECK_AES( TEST )    if( TEST == AES_GCM_FAILURE) { exit(1); }
