@@ -2,3 +2,4 @@ archive
 bin
 *.swp
 wp.out
+.frama-c
