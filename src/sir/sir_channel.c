@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 #include "string/libstring.h"
 #include "platform.h"
 #include "sir_channel.h"
@@ -12,24 +13,81 @@
 
 static sir_channel_context_t sir_channel_context;
 
-int bytes_available_in_recv_buf(uint64_t size)
+/*@ requires sir_channel_context.recv_buf_current < (sir_channel_context.recv_buf_start +
+                                                     sir_channel_context.recv_buf_size);
+    requires size > 0 && size < 4096;
+    assigns \nothing;
+    behavior space_left_in_recv_buf:
+      assumes ((sir_channel_context.recv_buf_current + size) < 
+               (sir_channel_context.recv_buf_start + sir_channel_context.recv_buf_size) &&
+               (sir_channel_context.recv_buf_current) < 
+               (sir_channel_context.recv_buf_current + size));
+      ensures \result == 1;
+    behavior out_of_space_in_recv_buf:
+      assumes !((sir_channel_context.recv_buf_current + size) < 
+               (sir_channel_context.recv_buf_start + sir_channel_context.recv_buf_size) &&
+               (sir_channel_context.recv_buf_current) < 
+               (sir_channel_context.recv_buf_current + size));
+      ensures \result == 0;
+    complete behaviors space_left_in_recv_buf, out_of_space_in_recv_buf;
+    disjoint behaviors space_left_in_recv_buf, out_of_space_in_recv_buf;
+ */
+bool bytes_available_in_recv_buf(uint64_t size)
 {
   if (((sir_channel_context.recv_buf_current + size) < 
        (sir_channel_context.recv_buf_start + sir_channel_context.recv_buf_size)) 
       &&
        ((sir_channel_context.recv_buf_current + size) >= 
-        (sir_channel_context.recv_buf_current)) ) { return 1; } else { return 0; }
+        (sir_channel_context.recv_buf_current)) ) { return true; } else { return false; }
 }
 
-int bytes_available_in_send_buf(uint64_t size)
+/*@ requires sir_channel_context.send_buf_current < (sir_channel_context.send_buf_start +
+                                                     sir_channel_context.send_buf_size);
+    requires size > 0 && size < 4096;
+    assigns \nothing;
+    behavior space_left_in_send_buf:
+      assumes ((sir_channel_context.send_buf_current + size) < 
+               (sir_channel_context.send_buf_start + sir_channel_context.send_buf_size) &&
+               (sir_channel_context.send_buf_current) < 
+               (sir_channel_context.send_buf_current + size)) == \true;
+      ensures \result == 1;
+    behavior out_of_space_in_send_buf:
+      assumes ((sir_channel_context.send_buf_current + size) < 
+               (sir_channel_context.send_buf_start + sir_channel_context.send_buf_size) &&
+               (sir_channel_context.send_buf_current) < 
+               (sir_channel_context.send_buf_current + size)) == \false;
+      ensures \result == 0;
+    complete behaviors space_left_in_send_buf, out_of_space_in_send_buf;
+    disjoint behaviors space_left_in_send_buf, out_of_space_in_send_buf;
+ */
+bool bytes_available_in_send_buf(uint64_t size)
 {
   if (((sir_channel_context.send_buf_current + size) < 
        (sir_channel_context.send_buf_start + sir_channel_context.send_buf_size)) 
       &&
        ((sir_channel_context.send_buf_current + size) >= 
-        (sir_channel_context.send_buf_current)) ) { return 1; } else { return 0; }
+        (sir_channel_context.send_buf_current)) ) { return true; } else { return false; }
 }
 
+/*@ requires \valid(send_buf_start+ (0..send_buf_size-1));
+    requires \valid(recv_buf_start+ (0..recv_buf_size-1));
+    requires send_buf_size == 4096 && recv_buf_size == 4096;
+    requires send_buf_size > 0 && recv_buf_size > 0;
+    requires \separated(send_buf_start+ (0..send_buf_size-1), 
+                        recv_buf_start+ (0..recv_buf_size-1));
+    requires (send_buf_start < send_buf_start + send_buf_size) &&
+             (recv_buf_start < recv_buf_start + recv_buf_size);
+    assigns sir_channel_context;
+    ensures \separated(sir_channel_context.send_buf_start+ (0..sir_channel_context.send_buf_size-1), 
+                       sir_channel_context.recv_buf_start+ (0..sir_channel_context.recv_buf_size-1));
+    ensures sir_channel_context.send_buf_start == send_buf_start;
+    ensures sir_channel_context.send_buf_current == send_buf_start;
+    ensures sir_channel_context.send_buf_size == 4096;
+    ensures sir_channel_context.recv_buf_start == recv_buf_start;
+    ensures sir_channel_context.recv_buf_current == recv_buf_start;
+    ensures sir_channel_context.recv_buf_size == 4096;
+    ensures sir_channel_context.symmetric_key == key;
+ */
 void init_channel(uint8_t *send_buf_start, 
                   uint64_t send_buf_size,
                   uint8_t *recv_buf_start,
@@ -45,6 +103,14 @@ void init_channel(uint8_t *send_buf_start,
     sir_channel_context.symmetric_key = key;
 }
 
+/*@ requires size > 0 && size < 4080;
+    requires sir_channel_context.send_buf_current < (sir_channel_context.send_buf_start +
+                                                     sir_channel_context.send_buf_size);
+    requires \valid(sir_channel_context.send_buf_start+ (0..sir_channel_context.send_buf_size-1));
+    requires \valid(sir_channel_context.send_buf_current+ (0..size+15));
+    assigns \old(sir_channel_context.send_buf_current)[0..size+15], 
+            sir_channel_context.send_buf_current;
+ */
 channel_api_result_t channel_send(message_type_t type, uint8_t *buf, uint64_t size)
 {
     sir_message_header_t msg_header;
@@ -52,11 +118,15 @@ channel_api_result_t channel_send(message_type_t type, uint8_t *buf, uint64_t si
     msg_header.message_type = type;
     msg_header.message_size = size;
 
-    if (!bytes_available_in_send_buf(size + sizeof(sir_message_header_t))) { 
+    if (bytes_available_in_send_buf(size + sizeof(sir_message_header_t)) == false) { 
       return CHANNEL_FAILURE; 
     }
 
-    memcpy(sir_channel_context.send_buf_current, (void *) &msg_header, sizeof(msg_header)); 
+    uint8_t *msg_header_ptr = (uint8_t *) &msg_header;
+    //@ assert sir_channel_context.send_buf_current <= (sir_channel_context.send_buf_current + size + 16);
+    //@ assert \valid(sir_channel_context.send_buf_current+ (0..size+15));
+    //@ assert \valid((uint8_t *)msg_header_ptr+ (0..15));
+    memcpy(sir_channel_context.send_buf_current, (uint8_t *) &msg_header, sizeof(msg_header)); 
     sir_channel_context.send_buf_current += sizeof(msg_header);
 
     if (size > 0) {
@@ -64,7 +134,7 @@ channel_api_result_t channel_send(message_type_t type, uint8_t *buf, uint64_t si
       sir_channel_context.send_buf_current += size;
     }
 
-    yield(); /* untrusted code must send it to remote */
+    yield(); // untrusted code must send it to remote 
     return CHANNEL_SUCCESS;
 }
 
@@ -72,18 +142,18 @@ channel_api_result_t channel_recv(message_type_t type, uint8_t *buf, uint64_t si
 {
     sir_message_header_t msg_header;
 
-    /* first transmit the header so that host knows we want size number of bytes */
-    if (!bytes_available_in_send_buf(sizeof(msg_header))) { return CHANNEL_FAILURE; }
+    // first transmit the header so that host knows we want size number of bytes 
+    if (bytes_available_in_send_buf(sizeof(msg_header)) == false) { return CHANNEL_FAILURE; }
 
     msg_header.message_type = type;
     msg_header.message_size = size;
     memcpy(sir_channel_context.send_buf_current, (void *) &msg_header, sizeof(msg_header)); 
     sir_channel_context.send_buf_current += sizeof(msg_header);
 
-    yield(); /* let the host get those bytes for us */
+    yield(); // let the host get those bytes for us 
 
-      /* first retrieve the header */
-    if (!bytes_available_in_recv_buf(size)) { return CHANNEL_FAILURE; }
+    // first retrieve the header
+    if (bytes_available_in_recv_buf(size) == false) { return CHANNEL_FAILURE; }
 
     memcpy(buf, sir_channel_context.recv_buf_current, size);
     sir_channel_context.recv_buf_current += size; //skip past the end
@@ -101,10 +171,10 @@ channel_api_result_t sir_send(uint8_t *buf, uint64_t size)
 
     if (size > 128) 
     { 
-        return CHANNEL_FAILURE; /* larger messages are not yet supported - need malloc*/
+        return CHANNEL_FAILURE; // larger messages are not yet supported - need malloc
     }
 
-    if (sir_channel_context.symmetric_key == NULL) /* send without encrypting */ 
+    if (sir_channel_context.symmetric_key == NULL) // send without encrypting 
     { 
         return channel_send(SEND_MESSAGE, buf, size); 
     }
@@ -112,7 +182,7 @@ channel_api_result_t sir_send(uint8_t *buf, uint64_t size)
     memset(buf_128_bytes, 0x00, sizeof(buf_128_bytes));
     memcpy(buf_128_bytes, buf, size);
 
-    /* generate new, random IV */
+    // generate new, random IV 
     rng_result = rdrand_get_bytes(16, ciphertext + 128);
     if (rng_result != DRNG_SUCCESS) { exit(1); }
 
@@ -139,10 +209,10 @@ channel_api_result_t sir_recv(uint8_t *buf, uint64_t size)
 
     if (size > 128) 
     { 
-        return CHANNEL_FAILURE; /* larger messages are not yet supported */
+        return CHANNEL_FAILURE; // larger messages are not yet supported 
     } 
 
-    if (sir_channel_context.symmetric_key == NULL) /* recv without decrypting */ 
+    if (sir_channel_context.symmetric_key == NULL) // recv without decrypting 
     { 
         return channel_recv(SEND_MESSAGE, buf, size); 
     }
@@ -163,3 +233,4 @@ channel_api_result_t sir_recv(uint8_t *buf, uint64_t size)
     memcpy(buf, cleartext, size);
     return CHANNEL_SUCCESS;
 }
+

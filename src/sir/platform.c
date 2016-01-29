@@ -3,7 +3,7 @@
 platform_config_t platform_config;
 extern void L_main();
 
-void exit(int status)
+void exit(uint64_t status)
 {
   (void) status; //to supress unused parameter warning
   __asm("int3");

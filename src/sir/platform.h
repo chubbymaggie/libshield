@@ -11,7 +11,7 @@ typedef struct {
 
 extern platform_config_t platform_config;
 
-void exit(int status);
+void exit(uint64_t status);
 void yield();
 void sir_init(uint8_t *stack, uint8_t *heap, uint8_t *recv, uint8_t *send);
 void sir_entry();
